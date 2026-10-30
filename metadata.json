@@ -1,0 +1,6 @@
+{
+  "name": "Logistics Analytics System",
+  "description": "Dynamic Multi-File Logistics Analytics Dashboard with Excel ingestion, automatic date extraction, historical reporting, and interactive KPI tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
