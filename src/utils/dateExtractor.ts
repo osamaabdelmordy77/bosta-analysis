@@ -26,11 +26,11 @@ export function extractDateFromFilename(filename: string): string | null {
   // Remove extension
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
 
-  // 1. Match ISO pattern: YYYY[-_.]MM[-_.]DD (e.g. 2026-07-01, 2026_07_01, 2026.07.01)
-  const isoMatch = nameWithoutExt.match(/(20\d\d)[-_.\s](0[1-9]|1[0-2])[-_.\s](0[1-9]|[12]\d|3[01])/);
+  // 1. Match year-first dates, allowing unpadded month and day values.
+  const isoMatch = nameWithoutExt.match(/(?:^|[^0-9])(20\d\d)[-_.\s](1[0-2]|0?[1-9])[-_.\s](3[01]|[12]\d|0?[1-9])(?:$|[^0-9])/);
   if (isoMatch) {
     const [, year, month, day] = isoMatch;
-    return `${year}-${month}-${day}`;
+    return toValidISODate(Number(day), Number(month), Number(year));
   }
 
   // 2. Match Compact YYYYMMDD (e.g. 20260701)
@@ -41,10 +41,10 @@ export function extractDateFromFilename(filename: string): string | null {
   }
 
   // 3. Match European / Day-first pattern: DD[-_.]MM[-_.]YYYY (e.g. 01-07-2026, 15_08_2025)
-  const euMatch = nameWithoutExt.match(/(0[1-9]|[12]\d|3[01])[-_.\s](0[1-9]|1[0-2])[-_.\s](20\d\d)/);
+  const euMatch = nameWithoutExt.match(/(0?[1-9]|[12]\d|3[01])[-_.\/\s](0?[1-9]|1[0-2])[-_.\/\s](20\d\d)/);
   if (euMatch) {
     const [, day, month, year] = euMatch;
-    return `${year}-${month}-${day}`;
+    return `${year}-${pad2(month)}-${pad2(day)}`;
   }
 
   // 4. Match Month Name patterns, e.g. "01_July_2026", "July_01_2026", "2026_July_01"
@@ -77,6 +77,39 @@ export function extractDateFromFilename(filename: string): string | null {
   }
 
   return null;
+}
+
+export function extractDateFromSheetNames(sheetNames: string[], year: number): string | null {
+  for (const sheetName of sheetNames) {
+    const fullDate = extractDateFromFilename(sheetName);
+    if (fullDate) return fullDate;
+
+    const yearFirst = sheetName.match(/(?:^|[^0-9])(20\d{2})[-_.\/\s](1[0-2]|0?[1-9])[-_.\/\s](3[01]|[12]\d|0?[1-9])(?:$|[^0-9])/);
+    if (yearFirst) {
+      const [, fullYear, fullMonth, fullDay] = yearFirst;
+      const isoDate = toValidISODate(Number(fullDay), Number(fullMonth), Number(fullYear));
+      if (isoDate) return isoDate;
+    }
+
+    const match = sheetName.match(/(?:^|[^0-9])(3[01]|[12]\d|0?[1-9])[-_.\/\s](1[0-2]|0?[1-9])(?:[-_.\/\s](20\d{2}))?(?:$|[^0-9])/);
+    if (!match) continue;
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const dateYear = Number(match[3] || year);
+    const isoDate = toValidISODate(day, month, dateYear);
+    if (isoDate) return isoDate;
+  }
+
+  return null;
+}
+
+function toValidISODate(day: number, month: number, year: number): string | null {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return `${year}-${pad2(month)}-${pad2(day)}`;
 }
 
 export function formatReadableDate(dateStr: string): string {

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { extractDateFromFilename, formatReadableDate } from '../utils/dateExtractor';
+import * as XLSX from 'xlsx';
+import { extractDateFromFilename, extractDateFromSheetNames } from '../utils/dateExtractor';
 import { Upload, X, AlertCircle, CheckCircle2, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
 
 export interface PendingFile {
@@ -34,15 +35,25 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFilesAdded = (rawFiles: FileList | File[]) => {
+  const handleFilesAdded = async (rawFiles: FileList | File[]) => {
     const fileArray = Array.from(rawFiles).filter((f) =>
       /\.(xlsx|xls)$/i.test(f.name)
     );
 
     if (fileArray.length === 0) return;
 
-    const newPending: PendingFile[] = fileArray.map((file) => {
-      const detected = extractDateFromFilename(file.name);
+    const newPending: PendingFile[] = await Promise.all(fileArray.map(async (file) => {
+      const detectedFromFilename = extractDateFromFilename(file.name);
+      let detectedFromSheet: string | null = null;
+      if (!detectedFromFilename) {
+        try {
+          const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', bookSheets: true });
+          detectedFromSheet = extractDateFromSheetNames(workbook.SheetNames, new Date().getFullYear());
+        } catch {
+          // Keep the existing fallback for unreadable workbooks.
+        }
+      }
+      const detected = detectedFromFilename || detectedFromSheet;
       const today = new Date().toISOString().slice(0, 10);
       return {
         id: `${file.name}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -53,7 +64,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         isManualDate: !detected,
         status: 'idle',
       };
-    });
+    }));
 
     setPendingFiles((prev) => [...prev, ...newPending]);
   };
@@ -152,8 +163,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               Select or Drag &amp; Drop Excel Files (.xlsx, .xls)
             </h4>
             <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
-              Select multiple files simultaneously. Shipment date is automatically extracted from the filename
-              (e.g. <code>Shipment_2026-07-01.xlsx</code>).
+              Select multiple files simultaneously. Shipment date is extracted from the filename or worksheet name
+              (e.g. <code>Shipment_2026-07-01.xlsx</code> or <code>1-8</code>).
             </p>
             <button type="button" className="btn pri sm pointer-events-none">
               Browse Excel Files

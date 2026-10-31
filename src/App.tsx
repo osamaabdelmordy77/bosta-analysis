@@ -14,6 +14,7 @@ import { setupChartJS } from './utils/chartSetup';
 import {
   getStoredFiles,
   getAllStoredShipments,
+  syncStoredShipmentDates,
   saveFileWithShipments,
   deleteStoredFile,
   updateStoredFileDate,
@@ -82,10 +83,16 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const storedFiles = await getStoredFiles();
-        const storedShipments = await getAllStoredShipments();
-        const savedHubBasis = await getSetting<string>('hubBasis');
-        const savedOverrides = await getSetting<Partial<ColumnMapping>>('columnOverrides');
+        const [storedFiles, loadedShipments, savedHubBasis, savedOverrides] = await Promise.all([
+          getStoredFiles(),
+          getAllStoredShipments(),
+          getSetting<string>('hubBasis'),
+          getSetting<Partial<ColumnMapping>>('columnOverrides'),
+        ]);
+        const storedShipments = await syncStoredShipmentDates(
+          new Map(storedFiles.map((file) => [file.id, file.detectedDate])),
+          loadedShipments
+        );
 
         setFiles(storedFiles);
         setShipments(storedShipments);
@@ -138,18 +145,45 @@ export default function App() {
   // Process and ingest uploaded files
   const handleProcessFiles = async (pending: PendingFile[]) => {
     const updatedFiles = [...files];
-    let allNewRecords: ShipmentRecord[] = [];
     const newHubsSet = new Set(hubLabels);
     const newHeadersSet = new Set(allHeaders);
+    const parsedFiles: Array<{
+      pendingFile: PendingFile;
+      parsed: Awaited<ReturnType<typeof processExcelFile>>;
+    } | null> = Array(pending.length).fill(null);
+    const processingErrors: string[] = [];
+    let nextIndex = 0;
 
-    for (const p of pending) {
+    const processNextFile = async () => {
+      while (true) {
+        const index = nextIndex++;
+        if (index >= pending.length) return;
+        const pendingFile = pending[index];
+
+        try {
+          const parsed = await processExcelFile({
+            file: pendingFile.file,
+            fileId: pendingFile.name,
+            shipmentDate: pendingFile.detectedDate,
+            overrides: columnOverrides as Record<string, string>,
+          });
+          parsedFiles[index] = { pendingFile, parsed };
+        } catch (err) {
+          console.error(`Failed parsing file ${pendingFile.name}:`, err);
+          processingErrors.push(`${pendingFile.name}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(3, pending.length) }, () => processNextFile())
+    );
+
+    for (const result of parsedFiles) {
+      if (!result) continue;
+      const { pendingFile: p, parsed } = result;
+
       try {
-        const parsed = await processExcelFile({
-          file: p.file,
-          fileId: p.name, // Use filename as primary key to automatically prevent duplicate file re-ingestions
-          shipmentDate: p.detectedDate,
-          overrides: columnOverrides as Record<string, string>,
-        });
 
         const fileMeta: UploadedFile = {
           id: p.name,
@@ -174,17 +208,16 @@ export default function App() {
           updatedFiles.unshift(fileMeta);
         }
 
-        allNewRecords = [
-          ...allNewRecords.filter((r) => r.fileName !== p.name),
-          ...parsed.records,
-        ];
-
         parsed.hubLabels.forEach((l) => newHubsSet.add(l));
         parsed.allHeaders.forEach((h) => newHeadersSet.add(h));
       } catch (err) {
-        console.error(`Failed parsing file ${p.name}:`, err);
-        alert(`Could not process ${p.name}: ${err instanceof Error ? err.message : String(err)}`);
+        console.error(`Failed saving file ${p.name}:`, err);
+        processingErrors.push(`${p.name}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+
+    if (processingErrors.length > 0) {
+      alert(`Could not process the following files:\n${processingErrors.join('\n')}`);
     }
 
     // Reload all records from IndexedDB to guarantee pristine state

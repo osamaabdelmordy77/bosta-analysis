@@ -70,6 +70,39 @@ export async function getAllStoredShipments(): Promise<ShipmentRecord[]> {
   });
 }
 
+export async function syncStoredShipmentDates(
+  fileDates: Map<string, string>,
+  records: ShipmentRecord[]
+): Promise<ShipmentRecord[]> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('shipments', 'readwrite');
+    const store = tx.objectStore('shipments');
+    const syncedRecords = records.map((record) => {
+      const shipmentDate = fileDates.get(record.fileId);
+      if (!shipmentDate || !/^\d{4}-\d{2}-\d{2}$/.test(shipmentDate)) return record;
+
+      const [year, month, day] = shipmentDate.split('-').map(Number);
+      const parsedDate = new Date(Date.UTC(year, month - 1, day));
+      if (
+        parsedDate.getUTCFullYear() !== year ||
+        parsedDate.getUTCMonth() !== month - 1 ||
+        parsedDate.getUTCDate() !== day
+      ) return record;
+
+      const dateMs = parsedDate.getTime();
+      if (record.shipmentDate === shipmentDate && record.dateMs === dateMs) return record;
+
+      const syncedRecord = { ...record, shipmentDate, dateMs };
+      store.put(syncedRecord);
+      return syncedRecord;
+    });
+
+    tx.oncomplete = () => resolve(syncedRecords);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function saveFileWithShipments(
   file: UploadedFile,
   records: ShipmentRecord[]
