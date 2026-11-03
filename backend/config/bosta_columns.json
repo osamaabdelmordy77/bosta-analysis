@@ -1,0 +1,1690 @@
+[
+  {
+    "source_number": 1,
+    "source_label": "Business",
+    "table": "shipment_snapshots",
+    "physical_column": "business_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 2,
+    "source_label": "Business ID",
+    "table": "shipment_snapshots",
+    "physical_column": "business_external_id",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 3,
+    "source_label": "Tracking Number",
+    "table": "shipment_snapshots",
+    "physical_column": "tracking_number",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 4,
+    "source_label": "Package Size",
+    "table": "shipment_snapshots",
+    "physical_column": "package_size",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 5,
+    "source_label": "Created At",
+    "table": "shipment_snapshots",
+    "physical_column": "source_created_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 6,
+    "source_label": "Picked-Up Date",
+    "table": "shipment_snapshots",
+    "physical_column": "picked_up_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 7,
+    "source_label": "Picked From Customer Date",
+    "table": "shipment_snapshots",
+    "physical_column": "picked_from_customer_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 8,
+    "source_label": "Expected Pickup Date",
+    "table": "shipment_snapshots",
+    "physical_column": "expected_pickup_date",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 9,
+    "source_label": "Expected Delivery Date",
+    "table": "shipment_snapshots",
+    "physical_column": "expected_delivery_date",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 10,
+    "source_label": "Expected Return Date",
+    "table": "shipment_snapshots",
+    "physical_column": "expected_return_date",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 11,
+    "source_label": "Pickup Request Id",
+    "table": "shipment_snapshots",
+    "physical_column": "pickup_request_id",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 12,
+    "source_label": "Consignee Name",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "consignee_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 13,
+    "source_label": "Consignee phone",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "consignee_phone",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 14,
+    "source_label": "Pickup First Line",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "pickup_first_line",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 15,
+    "source_label": "Pickup Second Line",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "pickup_second_line",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 16,
+    "source_label": "Pickup Zone",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "pickup_zone",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 17,
+    "source_label": "Pickup City",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "pickup_city",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 18,
+    "source_label": "Pickup District",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "pickup_district",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 19,
+    "source_label": "DropOff First Line",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "dropoff_first_line",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 20,
+    "source_label": "DropOff Second Line",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "dropoff_second_line",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 21,
+    "source_label": "DropOff Zone",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "dropoff_zone",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 22,
+    "source_label": "DropOff City",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "dropoff_city",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 23,
+    "source_label": "DropOff District",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "dropoff_district",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 24,
+    "source_label": "Business Return Name",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "business_return_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 25,
+    "source_label": "Cod Amount",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "cod_amount",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 26,
+    "source_label": "Original Cod Amount",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "original_cod_amount",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 27,
+    "source_label": "Star name",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "star_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 28,
+    "source_label": "Star ID",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "star_external_id",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 29,
+    "source_label": "Star Phone",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "star_phone",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 30,
+    "source_label": "Merchant name",
+    "table": "shipment_snapshots",
+    "physical_column": "merchant_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 31,
+    "source_label": "Notes",
+    "table": "shipment_snapshots",
+    "physical_column": "notes",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 32,
+    "source_label": "Type",
+    "table": "shipment_snapshots",
+    "physical_column": "shipment_type",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 33,
+    "source_label": "Business Reference Number",
+    "table": "shipment_snapshots",
+    "physical_column": "business_reference_number",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 34,
+    "source_label": "Business Delivery Promise",
+    "table": "shipment_snapshots",
+    "physical_column": "business_delivery_promise",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 35,
+    "source_label": "Delivered at",
+    "table": "shipment_snapshots",
+    "physical_column": "delivered_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 36,
+    "source_label": "Delivery State",
+    "table": "shipment_snapshots",
+    "physical_column": "delivery_state",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 37,
+    "source_label": "Updated at",
+    "table": "shipment_snapshots",
+    "physical_column": "source_updated_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 38,
+    "source_label": "Current Hub",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "current_hub_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 39,
+    "source_label": "Current Hub Display Code",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "current_hub_display_code",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 40,
+    "source_label": "Current Parent Hub Display Code",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "current_parent_hub_display_code",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 41,
+    "source_label": "Number Of attempts",
+    "table": "shipment_snapshots",
+    "physical_column": "attempts_count",
+    "provisional_type": "unsignedInteger",
+    "group": "—"
+  },
+  {
+    "source_number": 42,
+    "source_label": "Forward Attempts Count",
+    "table": "shipment_snapshots",
+    "physical_column": "forward_attempts_count",
+    "provisional_type": "unsignedInteger",
+    "group": "—"
+  },
+  {
+    "source_number": 43,
+    "source_label": "Return Attempts Count",
+    "table": "shipment_snapshots",
+    "physical_column": "return_attempts_count",
+    "provisional_type": "unsignedInteger",
+    "group": "—"
+  },
+  {
+    "source_number": 44,
+    "source_label": "Received Time",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "received_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 45,
+    "source_label": "Location Inside Hub",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "location_inside_hub",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 46,
+    "source_label": "Is WhatsApp Cancellation",
+    "table": "shipment_snapshot_service",
+    "physical_column": "is_whats_app_cancellation",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 47,
+    "source_label": "Cancellation Time",
+    "table": "shipment_snapshot_service",
+    "physical_column": "cancellation_time",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 48,
+    "source_label": "Cancellation Reason",
+    "table": "shipment_snapshot_service",
+    "physical_column": "cancellation_reason",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 49,
+    "source_label": "Warehouse Tarnsit Seal Number",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "warehouse_transit_seal_number",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 50,
+    "source_label": "First Attempt Date",
+    "table": "shipment_snapshots",
+    "physical_column": "first_attempt_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 51,
+    "source_label": "In Transit To",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "in_transit_to",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 52,
+    "source_label": "SLA Date",
+    "table": "shipment_snapshots",
+    "physical_column": "sla_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 53,
+    "source_label": "Exceeded SLA",
+    "table": "shipment_snapshots",
+    "physical_column": "exceeded_sla",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 54,
+    "source_label": "Exceeded Delivery SLA",
+    "table": "shipment_snapshots",
+    "physical_column": "exceeded_delivery_sla",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 55,
+    "source_label": "Delivery SLA Date",
+    "table": "shipment_snapshots",
+    "physical_column": "delivery_sla_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 56,
+    "source_label": "Investigation At",
+    "table": "shipment_snapshots",
+    "physical_column": "investigation_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 57,
+    "source_label": "Scheduled At",
+    "table": "shipment_snapshots",
+    "physical_column": "scheduled_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 58,
+    "source_label": "Lost At",
+    "table": "shipment_snapshots",
+    "physical_column": "lost_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 59,
+    "source_label": "Lost Liability Reasons",
+    "table": "shipment_snapshot_service",
+    "physical_column": "lost_liability_reasons",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 60,
+    "source_label": "Loss Liable Hub Name",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "loss_liable_hub_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 61,
+    "source_label": "Damaged At",
+    "table": "shipment_snapshots",
+    "physical_column": "damaged_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 62,
+    "source_label": "Last Outbound Agent",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "last_outbound_agent",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 63,
+    "source_label": "Is OnHold",
+    "table": "shipment_snapshots",
+    "physical_column": "is_on_hold",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 64,
+    "source_label": "OnHoldDate",
+    "table": "shipment_snapshots",
+    "physical_column": "on_hold_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 65,
+    "source_label": "Assigned Hub",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "assigned_hub_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 66,
+    "source_label": "Assigned Hub Display Code",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "assigned_hub_display_code",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 67,
+    "source_label": "Assigned Parent Hub Display Code",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "assigned_parent_hub_display_code",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 68,
+    "source_label": "Auto Assigned Hub",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "auto_assigned_hub_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 69,
+    "source_label": "RTO Time",
+    "table": "shipment_snapshots",
+    "physical_column": "rto_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 70,
+    "source_label": "Price Before VAT",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "price_before_vat",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 71,
+    "source_label": "Price After VAT",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "price_after_vat",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 72,
+    "source_label": "Zero COD Discount",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "zero_cod_discount",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 73,
+    "source_label": "Extra COD Fees",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "extra_cod_fees",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 74,
+    "source_label": "Insurance Fees",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "insurance_fees",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 75,
+    "source_label": "Next Day Fees",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "next_day_fees",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 76,
+    "source_label": "Promotion Discount",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "promotion_discount",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 77,
+    "source_label": "Last Transfer Date",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "last_transfer_date",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 78,
+    "source_label": "No. of phone calls",
+    "table": "shipment_snapshot_service",
+    "physical_column": "phone_calls_count",
+    "provisional_type": "unsignedInteger",
+    "group": "—"
+  },
+  {
+    "source_number": 79,
+    "source_label": "Last phone call date time",
+    "table": "shipment_snapshot_service",
+    "physical_column": "last_phone_call_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 80,
+    "source_label": "No. of SMS",
+    "table": "shipment_snapshot_service",
+    "physical_column": "sms_count",
+    "provisional_type": "unsignedInteger",
+    "group": "—"
+  },
+  {
+    "source_number": 81,
+    "source_label": "Last SMS date time",
+    "table": "shipment_snapshot_service",
+    "physical_column": "last_sms_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 82,
+    "source_label": "Package type",
+    "table": "shipment_snapshots",
+    "physical_column": "package_type",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 83,
+    "source_label": "Description",
+    "table": "shipment_snapshots",
+    "physical_column": "description",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 84,
+    "source_label": "Items",
+    "table": "shipment_snapshots",
+    "physical_column": "items",
+    "provisional_type": "unsignedInteger",
+    "group": "—"
+  },
+  {
+    "source_number": 85,
+    "source_label": "Actual Weight",
+    "table": "shipment_snapshots",
+    "physical_column": "actual_weight",
+    "provisional_type": "decimal(14,3)",
+    "group": "—"
+  },
+  {
+    "source_number": 86,
+    "source_label": "Volumetric Weight",
+    "table": "shipment_snapshots",
+    "physical_column": "volumetric_weight",
+    "provisional_type": "decimal(14,3)",
+    "group": "—"
+  },
+  {
+    "source_number": 87,
+    "source_label": "Pickup Sector",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "pickup_sector",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 88,
+    "source_label": "Dropoff Sector",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "dropoff_sector",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 89,
+    "source_label": "Is Confirmed Delivery",
+    "table": "shipment_snapshots",
+    "physical_column": "is_confirmed_delivery",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 90,
+    "source_label": "Confirmed Delivery At",
+    "table": "shipment_snapshots",
+    "physical_column": "confirmed_delivery_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 91,
+    "source_label": "Is Auto Delivered",
+    "table": "shipment_snapshots",
+    "physical_column": "is_auto_delivered",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 92,
+    "source_label": "Old Type",
+    "table": "shipment_snapshots",
+    "physical_column": "old_type",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 93,
+    "source_label": "FXF SO Number",
+    "table": "shipment_snapshots",
+    "physical_column": "fxf_so_number",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 94,
+    "source_label": "First Hub",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "first_hub_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 95,
+    "source_label": "Virtual Star ID",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "virtual_star_external_id",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 96,
+    "source_label": "First Receiving By",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "first_receiving_by",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 97,
+    "source_label": "Last Dispatch Hub",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "last_dispatch_hub_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 98,
+    "source_label": "Collected From Consignee by",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "collected_from_consignee_by",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 99,
+    "source_label": "Payment Type",
+    "table": "shipment_snapshots",
+    "physical_column": "payment_type",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 100,
+    "source_label": "Seal Number",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "seal_number",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 101,
+    "source_label": "Barcode Reference",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "barcode_reference",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 102,
+    "source_label": "Latest Exception Reason",
+    "table": "shipment_snapshot_service",
+    "physical_column": "latest_exception_reason",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 103,
+    "source_label": "Address Type",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "address_type",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 104,
+    "source_label": "Business Request date",
+    "table": "shipment_snapshots",
+    "physical_column": "business_request_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 105,
+    "source_label": "New material request",
+    "table": "shipment_snapshot_service",
+    "physical_column": "new_material_request",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 106,
+    "source_label": "International Tracking Number",
+    "table": "shipment_snapshots",
+    "physical_column": "international_tracking_number",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 107,
+    "source_label": "Multi-package",
+    "table": "shipment_snapshots",
+    "physical_column": "multi_package",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 108,
+    "source_label": "Received Transfer date",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "received_transfer_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 109,
+    "source_label": "First Mile District Code",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "first_mile_district_code",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 110,
+    "source_label": "Custom VAT Type",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "custom_vat_type",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 111,
+    "source_label": "Custom VAT Value",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "custom_vat_value",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 112,
+    "source_label": "Star Rating",
+    "table": "shipment_snapshot_service",
+    "physical_column": "star_rating",
+    "provisional_type": "decimal(14,3)",
+    "group": "—"
+  },
+  {
+    "source_number": 113,
+    "source_label": "Star Comment",
+    "table": "shipment_snapshot_service",
+    "physical_column": "star_comment",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 114,
+    "source_label": "Service Rating",
+    "table": "shipment_snapshot_service",
+    "physical_column": "service_rating",
+    "provisional_type": "decimal(14,3)",
+    "group": "—"
+  },
+  {
+    "source_number": 115,
+    "source_label": "Service Comment",
+    "table": "shipment_snapshot_service",
+    "physical_column": "service_comment",
+    "provisional_type": "text",
+    "group": "—"
+  },
+  {
+    "source_number": 116,
+    "source_label": "Escalation Severity Level",
+    "table": "shipment_snapshot_service",
+    "physical_column": "escalation_severity_level",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 117,
+    "source_label": "Escalated At",
+    "table": "shipment_snapshot_service",
+    "physical_column": "escalated_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 118,
+    "source_label": "Latest Severity Update Date",
+    "table": "shipment_snapshot_service",
+    "physical_column": "latest_severity_update_date",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 119,
+    "source_label": "Ticket Number",
+    "table": "shipment_snapshot_service",
+    "physical_column": "ticket_number",
+    "provisional_type": "string(100)",
+    "group": "—"
+  },
+  {
+    "source_number": 120,
+    "source_label": "Ticket Category",
+    "table": "shipment_snapshot_service",
+    "physical_column": "ticket_category",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 121,
+    "source_label": "Scheduled By Business",
+    "table": "shipment_snapshot_service",
+    "physical_column": "scheduled_by_business",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 122,
+    "source_label": "Scheduled By Consignee",
+    "table": "shipment_snapshot_service",
+    "physical_column": "scheduled_by_consignee",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 123,
+    "source_label": "Goods Value",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "goods_value",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 124,
+    "source_label": "Proof of cost Attachment Date",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "proof_of_cost_attachment_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 125,
+    "source_label": "Allow TO Open Package",
+    "table": "shipment_snapshot_service",
+    "physical_column": "allow_to_open_package",
+    "provisional_type": "boolean",
+    "group": "—"
+  },
+  {
+    "source_number": 126,
+    "source_label": "L2 Street Code",
+    "table": "shipment_snapshot_parties",
+    "physical_column": "l2_street_code",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 127,
+    "source_label": "Added To Route Date",
+    "table": "shipment_snapshot_routing",
+    "physical_column": "added_to_route_at",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 128,
+    "source_label": "Flex Ship Value",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_value",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 129,
+    "source_label": "Flex Ship Fees",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_fees",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 130,
+    "source_label": "Flex Ship Payment status",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_payment_status",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 131,
+    "source_label": "Flex Ship Star ID",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_star_external_id",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 132,
+    "source_label": "Flex Ship Star Name",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_star_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 133,
+    "source_label": "Flex Ship Collection Date",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_collection_date",
+    "provisional_type": "dateTime",
+    "group": "—"
+  },
+  {
+    "source_number": 134,
+    "source_label": "Flex Ship Tips",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flex_ship_tips",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 135,
+    "source_label": "Flash Tips",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "flash_tips",
+    "provisional_type": "decimal(18,4)",
+    "group": "—"
+  },
+  {
+    "source_number": 136,
+    "source_label": "Online Payment Provider",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "online_payment_provider",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 137,
+    "source_label": "Brand ID",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "brand_external_id",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 138,
+    "source_label": "Brand Name",
+    "table": "shipment_snapshot_financials",
+    "physical_column": "brand_name",
+    "provisional_type": "string(191)",
+    "group": "—"
+  },
+  {
+    "source_number": 139,
+    "source_label": "Attempt Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "0"
+  },
+  {
+    "source_number": 140,
+    "source_label": "Attempt By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "0"
+  },
+  {
+    "source_number": 141,
+    "source_label": "Attempt HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "0"
+  },
+  {
+    "source_number": 142,
+    "source_label": "Attempt Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "0"
+  },
+  {
+    "source_number": 143,
+    "source_label": "Exception Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "0"
+  },
+  {
+    "source_number": 144,
+    "source_label": "Exception Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "0"
+  },
+  {
+    "source_number": 145,
+    "source_label": "Exception time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "0"
+  },
+  {
+    "source_number": 146,
+    "source_label": "Exception lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "0"
+  },
+  {
+    "source_number": 147,
+    "source_label": "Attempt 1 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "1"
+  },
+  {
+    "source_number": 148,
+    "source_label": "Attempt 1 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "1"
+  },
+  {
+    "source_number": 149,
+    "source_label": "Attempt 1 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "1"
+  },
+  {
+    "source_number": 150,
+    "source_label": "Attempt 1 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "1"
+  },
+  {
+    "source_number": 151,
+    "source_label": "Exception 1 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "1"
+  },
+  {
+    "source_number": 152,
+    "source_label": "Exception 1 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "1"
+  },
+  {
+    "source_number": 153,
+    "source_label": "Exception 1 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "1"
+  },
+  {
+    "source_number": 154,
+    "source_label": "Exception 1 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "1"
+  },
+  {
+    "source_number": 155,
+    "source_label": "Attempt 2 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "2"
+  },
+  {
+    "source_number": 156,
+    "source_label": "Attempt 2 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "2"
+  },
+  {
+    "source_number": 157,
+    "source_label": "Attempt 2 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "2"
+  },
+  {
+    "source_number": 158,
+    "source_label": "Attempt 2 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "2"
+  },
+  {
+    "source_number": 159,
+    "source_label": "Exception 2 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "2"
+  },
+  {
+    "source_number": 160,
+    "source_label": "Exception 2 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "2"
+  },
+  {
+    "source_number": 161,
+    "source_label": "Exception 2 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "2"
+  },
+  {
+    "source_number": 162,
+    "source_label": "Exception 2 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "2"
+  },
+  {
+    "source_number": 163,
+    "source_label": "Attempt 3 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "3"
+  },
+  {
+    "source_number": 164,
+    "source_label": "Attempt 3 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "3"
+  },
+  {
+    "source_number": 165,
+    "source_label": "Attempt 3 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "3"
+  },
+  {
+    "source_number": 166,
+    "source_label": "Attempt 3 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "3"
+  },
+  {
+    "source_number": 167,
+    "source_label": "Exception 3 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "3"
+  },
+  {
+    "source_number": 168,
+    "source_label": "Exception 3 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "3"
+  },
+  {
+    "source_number": 169,
+    "source_label": "Exception 3 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "3"
+  },
+  {
+    "source_number": 170,
+    "source_label": "Exception 3 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "3"
+  },
+  {
+    "source_number": 171,
+    "source_label": "Attempt 4 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "4"
+  },
+  {
+    "source_number": 172,
+    "source_label": "Attempt 4 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "4"
+  },
+  {
+    "source_number": 173,
+    "source_label": "Attempt 4 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "4"
+  },
+  {
+    "source_number": 174,
+    "source_label": "Attempt 4 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "4"
+  },
+  {
+    "source_number": 175,
+    "source_label": "Exception 4 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "4"
+  },
+  {
+    "source_number": 176,
+    "source_label": "Exception 4 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "4"
+  },
+  {
+    "source_number": 177,
+    "source_label": "Exception 4 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "4"
+  },
+  {
+    "source_number": 178,
+    "source_label": "Exception 4 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "4"
+  },
+  {
+    "source_number": 179,
+    "source_label": "Attempt 5 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "5"
+  },
+  {
+    "source_number": 180,
+    "source_label": "Attempt 5 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "5"
+  },
+  {
+    "source_number": 181,
+    "source_label": "Attempt 5 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "5"
+  },
+  {
+    "source_number": 182,
+    "source_label": "Attempt 5 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "5"
+  },
+  {
+    "source_number": 183,
+    "source_label": "Exception 5 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "5"
+  },
+  {
+    "source_number": 184,
+    "source_label": "Exception 5 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "5"
+  },
+  {
+    "source_number": 185,
+    "source_label": "Exception 5 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "5"
+  },
+  {
+    "source_number": 186,
+    "source_label": "Exception 5 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "5"
+  },
+  {
+    "source_number": 187,
+    "source_label": "Attempt 6 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "6"
+  },
+  {
+    "source_number": 188,
+    "source_label": "Attempt 6 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "6"
+  },
+  {
+    "source_number": 189,
+    "source_label": "Attempt 6 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "6"
+  },
+  {
+    "source_number": 190,
+    "source_label": "Attempt 6 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "6"
+  },
+  {
+    "source_number": 191,
+    "source_label": "Exception 6 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "6"
+  },
+  {
+    "source_number": 192,
+    "source_label": "Exception 6 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "6"
+  },
+  {
+    "source_number": 193,
+    "source_label": "Exception 6 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "6"
+  },
+  {
+    "source_number": 194,
+    "source_label": "Exception 6 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "6"
+  },
+  {
+    "source_number": 195,
+    "source_label": "Attempt 7 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "7"
+  },
+  {
+    "source_number": 196,
+    "source_label": "Attempt 7 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "7"
+  },
+  {
+    "source_number": 197,
+    "source_label": "Attempt 7 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "7"
+  },
+  {
+    "source_number": 198,
+    "source_label": "Attempt 7 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "7"
+  },
+  {
+    "source_number": 199,
+    "source_label": "Exception 7 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "7"
+  },
+  {
+    "source_number": 200,
+    "source_label": "Exception 7 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "7"
+  },
+  {
+    "source_number": 201,
+    "source_label": "Exception 7 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "7"
+  },
+  {
+    "source_number": 202,
+    "source_label": "Exception 7 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "7"
+  },
+  {
+    "source_number": 203,
+    "source_label": "Attempt 8 Type",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_type",
+    "provisional_type": "string(100)",
+    "group": "8"
+  },
+  {
+    "source_number": 204,
+    "source_label": "Attempt 8 By",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_by",
+    "provisional_type": "string(191)",
+    "group": "8"
+  },
+  {
+    "source_number": 205,
+    "source_label": "Attempt 8 HuB Name",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_hub_name",
+    "provisional_type": "string(191)",
+    "group": "8"
+  },
+  {
+    "source_number": 206,
+    "source_label": "Attempt 8 Date",
+    "table": "delivery_attempts",
+    "physical_column": "attempt_at",
+    "provisional_type": "dateTime",
+    "group": "8"
+  },
+  {
+    "source_number": 207,
+    "source_label": "Exception 8 Fake Attempt",
+    "table": "delivery_attempts",
+    "physical_column": "exception_fake_attempt",
+    "provisional_type": "boolean",
+    "group": "8"
+  },
+  {
+    "source_number": 208,
+    "source_label": "Exception 8 Reason",
+    "table": "delivery_attempts",
+    "physical_column": "exception_reason",
+    "provisional_type": "text",
+    "group": "8"
+  },
+  {
+    "source_number": 209,
+    "source_label": "Exception 8 time",
+    "table": "delivery_attempts",
+    "physical_column": "exception_at",
+    "provisional_type": "dateTime",
+    "group": "8"
+  },
+  {
+    "source_number": 210,
+    "source_label": "Exception 8 lat/long",
+    "table": "delivery_attempts",
+    "physical_column": "exception_lat_long",
+    "provisional_type": "string(191)",
+    "group": "8"
+  },
+  {
+    "source_number": 211,
+    "source_label": "Auto Delivered By",
+    "table": "shipment_snapshots",
+    "physical_column": "auto_delivered_by",
+    "provisional_type": "string(191)",
+    "group": "—"
+  }
+]

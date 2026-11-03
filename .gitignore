@@ -4,5 +4,8 @@ dist/
 coverage/
 .DS_Store
 *.log
+# Local Bosta source exports can contain customer data; never commit root exports.
+/Deliveries_Export_*.xlsx
 .env*
 !.env.example
+!/backend/.env.testing.example

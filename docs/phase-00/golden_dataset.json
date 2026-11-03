@@ -1,0 +1,71 @@
+{
+  "dataset": "Bosta Phase 00 synthetic baseline",
+  "privacy": "Fully synthetic. Contains no real customer, business, agent, address, or shipment data.",
+  "files": [
+    {
+      "name": "synthetic_bosta_2026-07-01.xlsx",
+      "reportDateCandidate": "2026-07-01",
+      "sheets": ["Report", "Continuation"],
+      "sourceRows": 6,
+      "trackedRows": 5,
+      "missingTrackingRows": 1,
+      "sameRunRepeatedTrackingRowsAfterFirst": 2,
+      "invalidEventDateRows": 1,
+      "attemptGroupsOnSynthetic0001": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    {
+      "name": "synthetic_bosta_2026-07-02.xlsx",
+      "reportDateCandidate": "2026-07-02",
+      "sheets": ["Report"],
+      "sourceRows": 2,
+      "trackedRows": 2,
+      "missingTrackingRows": 0,
+      "sameRunRepeatedTrackingRowsAfterFirst": 0,
+      "invalidEventDateRows": 1,
+      "attemptGroupsOnSynthetic0001": []
+    }
+  ],
+  "identityFacts": {
+    "validTrackedSourceOccurrences": 7,
+    "uniqueTrackingValuesAcrossReports": 4,
+    "trackingRepeatedWithinFirstReport": "SYN-0001 occurs three times across two sheets; two rows repeat the first.",
+    "trackingRepeatedAcrossReportDates": "SYN-0001 appears in both report dates and is a valid historical observation, not a duplicate file row by definition."
+  },
+  "goldenMetricsByExplicitPolicy": {
+    "countEveryTrackedSourceOccurrence": {
+      "reportObservations": 7,
+      "uniqueShipments": 4,
+      "totalItems": 113,
+      "businesses": 3,
+      "activeHubs": 3,
+      "hubVolumeWithKnownHub": 6,
+      "itemsRationale": "2 + 1(default for blank Items in legacy parser) + 99 + 7 + 3 + 1 + 0"
+    },
+    "firstOccurrencePerImportRun": {
+      "reportObservations": 5,
+      "uniqueShipments": 4,
+      "totalItems": 7,
+      "businesses": 2,
+      "activeHubs": 2,
+      "hubVolumeWithKnownHub": 4,
+      "itemsRationale": "2 + 1(default for blank Items in legacy parser) + 3 + 1 + 0"
+    },
+    "existingFrontendObserved": {
+      "reportObservations": 5,
+      "uniqueTrackingValues": 4,
+      "duplicatesRemoved": 2,
+      "rowsMissingTracking": 1,
+      "totalItems": 7,
+      "sheetsRead": 3,
+      "headersObserved": 211,
+      "details": "The current parser deduplicates globally within each file, including across sheets; the same Tracking Number in another file remains a separate record."
+    }
+  },
+  "edgeCases": {
+    "malformedEventDates": ["31/02/2026", "not-a-date"],
+    "financialValues": [100.25, null, 2500.5, -12.75],
+    "trackingAsText": ["SYN-0001", "SYN-0002", "SYN-0003", "SYN-0004"],
+    "missingValues": ["Items", "Cod Amount", "Assigned Hub", "Pickup City", "DropOff City"]
+  },
+  "interpretation": "Candidate row counts and policy-dependent metrics are both retained. Do not treat a proposed duplicate policy or the one synthetic KPI scenario as a business-approved definition."
+}
