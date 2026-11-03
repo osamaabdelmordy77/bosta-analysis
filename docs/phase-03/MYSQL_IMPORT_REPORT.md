@@ -32,7 +32,7 @@
 ## تجهيز التطوير المحلي
 
 - المؤسسة: `bosta-local`، والعضو الأول `local.admin@bosta.test` بدور Organization Admin. كلمة المرور المؤقتة أُنشئت عشوائيًا وسلمت لصاحب المشروع خارج هذا التقرير.
-- MySQL التطوير: `bosta_analysis_local`؛ MySQL الاختبار: `bosta_analysis_test`.
+- قاعدة التطوير النشطة: `bosta_analysis_local` على MariaDB 10.4.28 المرفق بـXAMPP عبر `127.0.0.1:3306`؛ قاعدة الاختبار: `bosta_analysis_test` على الخادم نفسه. إعداد التطوير يستخدم حساب `root` بلا كلمة مرور بطلب المستخدم. خادم MySQL 8 السابق على 3307 وقاعدته محفوظان دون تعديل.
 - الواجهة: Vite على المنفذ 3000؛ Laravel على 8000؛ Vite proxy يمرر API وSanctum وفحص الصحة إلى Laravel.
 - PHP المحلي يعلن `upload_max_filesize=40M` و`post_max_size=40M`. حد Laravel للملف 32 MiB. لم تشغّل Queue أو Redis/Horizon أو Containers.
 
@@ -46,6 +46,7 @@
 - TypeScript (`npm run lint`) وبناء Vite (`npm run build`) نجحا.
 - فحص HTTP عبر Vite: الصفحة `/` وLaravel `/up` رجعا 200، CSRF رجع 204، وتسجيل الدخول واسترجاع المؤسسة والخروج نجحت.
 - لم يُرفع المصنف الأصلي للاختبار ولم يُعدّل.
+- اختُبر توافق migrations العشر واختبارات Laravel على MariaDB 10.4.28 في XAMPP؛ النتيجة **38 اختبارًا و233 assertion ناجحة**. نجاح اختبار API عبر واجهة Vite أكد أن خادم Laravel النشط قرأ إعداد 3306.
 
 ## قيود العمل المتبقية
 

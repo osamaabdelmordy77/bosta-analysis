@@ -6,9 +6,9 @@
 ## لقطة الحالة
 
 - **النطاق الحالي:** واجهة تحليل شحنات React/Vite الحالية باقية كما هي؛ أضيف Laravel 12 Backend منفصل داخل `backend/`.
-- **البيئة المحلية:** PHP 8.2.4 وComposer 2.11.1 وMySQL 8.4.13 مباشرة دون Containers؛ Vite يعمل على `localhost:3000` وLaravel على `127.0.0.1:8000` عبر proxy. Queue تستخدم Database driver ولا يوجد Redis/Horizon أو Worker عامل.
-- **قاعدة البيانات:** عشر migrations خاصة بالمشروع مطبقة على MySQL التطوير؛ جميع أعمدة Bosta الـ211 مهيكلة، علاقات منظمة ومفاتيح عزل مؤسسة، View للبيانات المنشورة النشطة، ملف XLSX الأصلي في MySQL LONGBLOB، وصفوف المصدر الخام محفوظة في JSON. قاعدة `bosta_analysis_local` للتطوير و`bosta_analysis_test` للاختبارات.
-- **الاختبارات الحالية:** Laravel على MySQL 8.4.13: 38 اختبارًا و233 assertion ناجحة؛ `npm run lint` و`npm run build` وPint ناجحة.
+- **البيئة المحلية:** PHP 8.2.4 وComposer 2.11.1 وMariaDB 10.4.28 المرفق بـXAMPP على `127.0.0.1:3306`، دون Containers. إعداد التطوير يستخدم محليًا `root` بلا كلمة مرور بناءً على طلب المستخدم. Vite يعمل على `localhost:3000` وLaravel على `127.0.0.1:8000` عبر proxy. Queue تستخدم Database driver ولا يوجد Redis/Horizon أو Worker عامل. خادم MySQL 8.4 على 3307 وقاعدته القديمة محفوظان دون تعديل لكنهما ليسا اتصال التطبيق الحالي.
+- **قاعدة البيانات:** عشر migrations خاصة بالمشروع مطبقة على قاعدة XAMPP النشطة؛ جميع أعمدة Bosta الـ211 مهيكلة، علاقات منظمة ومفاتيح عزل مؤسسة، View للبيانات المنشورة النشطة، ملف XLSX الأصلي في LONGBLOB، وصفوف المصدر الخام محفوظة في JSON. قاعدة `bosta_analysis_local` للتطوير و`bosta_analysis_test` للاختبارات.
+- **الاختبارات الحالية:** Laravel على MariaDB 10.4.28: 38 اختبارًا و233 assertion ناجحة؛ `npm run lint` و`npm run build` وPint ناجحة. اختبر توافق migrations والاختبارات على إصدار XAMPP نفسه.
 - **المصدر الأصلي:** ملف Excel لم يتغير؛ يحتوي 207/211 عنوانًا وصف بيانات واحدًا، لذا الأنواع والأطوال ودلالات التاريخ والتكرار تظل مؤقتة. الملف الأصلي مستثنى من Git.
 - **الاعتمادات:** تم إصلاح تعارض Vite 8 مع esbuild بتحديث esbuild إلى `^0.28.0` وتوليد `package-lock.json`.
 - **التحقق الأخير:** `npm install` نجح؛ `npm run build` نجح.
@@ -42,6 +42,7 @@
 - اختبار MySQL متكامل لتخزين المصنف والصفوف والتكرارات والنشر وإعادة المحاولة: 23 assertion ناجحة. واختبار انتقال الملخصات القديمة والتحقق من العدّ وإعادة محاولة الدفعة: 15 assertion ناجحة. مجموعة Laravel: 38 اختبارًا و233 assertion. فحوص TypeScript والبناء وPint نجحت.
 - Smoke test عبر `localhost:3000`: واجهة 200، Laravel `/up` 200، CSRF 204، دخول/استرجاع مؤسسة/خروج ناجحة. PHP يسمح بملف حتى 40M على مستوى الخادم؛ حد API 32 MiB.
 - التقرير: [MYSQL_IMPORT_REPORT.md](docs/phase-03/MYSQL_IMPORT_REPORT.md). بقي تحذيرا Vite المعروفان: `__dirname` وحجم JavaScript فوق 500 kB. لا Containers ولا Redis/Horizon ولا Worker إضافي.
+- **تحويل اتصال XAMPP:** نقل اتصال `.env` و`.env.testing` إلى MariaDB XAMPP على 3306 باستخدام root محلي بلا كلمة مرور، وإنشاء قاعدتي التطوير والاختبار وتطبيق migrations العشر. اجتازت مجموعة الاختبار نفسها 38 اختبارًا و233 assertion على XAMPP. دخول API عبر واجهة 3000 أكد عمل الاتصال الجديد. بقي MySQL 8 على 3307 وقاعدته القديمة محفوظين كما هما.
 
 ### 2026-11-03 — المرحلة 01
 
