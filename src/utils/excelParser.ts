@@ -177,9 +177,11 @@ export function parseExcelBuffer(
   fileId: string,
   fileName: string,
   shipmentDate: string,
-  overrides?: Record<string, string>
+  overrides?: Record<string, string>,
+  options: { includeDashboardRecords?: boolean } = {},
 ): ParseResult {
-  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true });
+  const includeDashboardRecords = options.includeDashboardRecords !== false;
+  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true, dense: true });
 
   const [y, m, d] = shipmentDate.split('-');
   const dateMs = Date.UTC(+y, +m - 1, +d);
@@ -187,12 +189,6 @@ export function parseExcelBuffer(
   const sheetsData = wb.SheetNames.map((name, sheetIndex) => {
     const ws = wb.Sheets[name];
     const aoa: unknown[][] = XLSX.utils.sheet_to_json(ws, {
-      header: 1,
-      raw: true,
-      defval: null,
-      blankrows: false
-    });
-    const sourceAoa: unknown[][] = XLSX.utils.sheet_to_json(ws, {
       header: 1,
       raw: true,
       defval: null,
@@ -211,8 +207,17 @@ export function parseExcelBuffer(
     }
 
     const rawHdr = (aoa[hi] || []) as unknown[];
-    const rows = aoa.slice(hi + 1);
-    const ncol = Math.max(rawHdr.length, ...rows.slice(0, 50).map((r) => r.length), 0);
+    const rawRows = aoa.slice(hi + 1);
+    const worksheetColumnCount = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).e.c + 1 : 0;
+    const dataColumnCount = rawRows.reduce((maximum, row) => Math.max(maximum, row.length), 0);
+    const ncol = Math.max(rawHdr.length, worksheetColumnCount, dataColumnCount);
+    const sourceRows = rawRows
+      .map((values, index) => {
+        for (let column = values.length; column < ncol; column++) values[column] = null;
+        return { sourceRowNumber: hi + index + 2, values };
+      })
+      .filter(({ values }) => values.some((value) => value != null && value !== ''));
+    const rows = sourceRows.map((sourceRow) => sourceRow.values);
     const headers: string[] = [];
     for (let i = 0; i < ncol; i++) {
       const h = rawHdr[i];
@@ -220,26 +225,7 @@ export function parseExcelBuffer(
     }
 
     const det = detectSheetColumns(headers, rows);
-
-    let sourceHeaderIndex = 0;
-    let sourceHeaderScore = -1;
-    for (let i = 0; i < Math.min(15, sourceAoa.length); i++) {
-      const count = (sourceAoa[i] || []).filter((value) => typeof value === 'string' && value.trim() !== '').length;
-      if (count > sourceHeaderScore) {
-        sourceHeaderScore = count;
-        sourceHeaderIndex = i;
-      }
-    }
-
-    const sourceHeader = (sourceAoa[sourceHeaderIndex] || []) as unknown[];
-    const sourceColumnCount = Math.max(sourceHeader.length, ...sourceAoa.slice(sourceHeaderIndex + 1, sourceHeaderIndex + 51).map((row) => row.length), 0);
-    const sourceHeaders = Array.from({ length: sourceColumnCount }, (_, index) => {
-      const header = sourceHeader[index];
-      return header != null && String(header).trim() !== '' ? String(header).trim() : `Column ${index + 1}`;
-    });
-    const sourceRows = sourceAoa.slice(sourceHeaderIndex + 1)
-      .map((values, index) => ({ sourceRowNumber: sourceHeaderIndex + index + 2, values }))
-      .filter(({ values }) => values.some((value) => value != null && value !== ''));
+    delete wb.Sheets[name];
 
     return {
       index: sheetIndex,
@@ -248,8 +234,8 @@ export function parseExcelBuffer(
       hnorm: headers.map(norm),
       rows,
       det,
-      sourceHeaderRowNumber: sourceHeaderIndex + 1,
-      sourceHeaders,
+      sourceHeaderRowNumber: hi + 1,
+      sourceHeaders: headers,
       sourceRows,
     };
   });
@@ -282,6 +268,7 @@ export function parseExcelBuffer(
   const records: ShipmentRecord[] = [];
   const seenTrackingInFile = new Set<string>();
   let totalRowsRead = 0;
+  let validShipments = 0;
   let duplicatesRemoved = 0;
   let missingTracking = 0;
 
@@ -331,8 +318,12 @@ export function parseExcelBuffer(
         seenTrackingInFile.add(trackingStr);
       } else {
         // Fallback synthetic tracking number if sheet lacks tracking column
-        trackingStr = `ROW-${fileId}-${records.length + 1}`;
+        trackingStr = `ROW-${fileId}-${validShipments + 1}`;
       }
+
+      const sourceRowNumber = sh.sourceRows[rIdx]?.sourceRowNumber;
+      validShipments++;
+      if (!includeDashboardRecords) continue;
 
       // Items
       let itemsVal = 1;
@@ -361,7 +352,6 @@ export function parseExcelBuffer(
         assignedHubVal = Object.values(recordHubs).find((v) => v != null) || null;
       }
 
-      const sourceRowNumber = sh.sourceRows[rIdx]?.sourceRowNumber;
       const rec: ShipmentRecord = {
         id: `${fileId}_${trackingStr}`,
         fileId,
@@ -393,6 +383,16 @@ export function parseExcelBuffer(
     shipmentDate,
     records,
     sourceSheets: sheetsData.map((sheet) => {
+      if (!includeDashboardRecords) {
+        return {
+          index: sheet.index,
+          name: sheet.name,
+          headerRowNumber: sheet.sourceHeaderRowNumber,
+          headers: sheet.sourceHeaders,
+          rows: sheet.sourceRows,
+        };
+      }
+
       const recordsByRow = new Map(
         records
           .filter((record) => record.sourceSheetIndex === sheet.index && record.sourceRowNumber !== undefined)
@@ -414,7 +414,7 @@ export function parseExcelBuffer(
     allHeaders,
     stats: {
       totalRowsRead,
-      validShipments: records.length,
+      validShipments,
       duplicatesRemoved,
       missingTracking,
       sheetsCount: wb.SheetNames.length,

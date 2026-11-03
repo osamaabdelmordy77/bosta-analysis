@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Imports\ImportIngestionService;
+use App\Imports\ImportFileContentStorage;
 use App\Models\ShipmentSnapshot;
 use App\Security\AuditLogService;
 use App\Security\AuthorizationService;
@@ -10,6 +11,7 @@ use App\Security\HubAccessService;
 use App\Tenancy\OrganizationContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -184,10 +186,10 @@ class ImportController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $organization, AuditLogService $audit): JsonResponse
+    public function store(Request $request, string $organization, AuditLogService $audit, ImportFileContentStorage $contentStorage): JsonResponse
     {
         $validated = $request->validate([
-            'file' => ['required', 'file', 'extensions:xlsx,xls', 'max:32768'],
+            'file' => ['required', 'file', 'max:32768'],
             'report_date' => ['required', 'date_format:Y-m-d'],
             'manual_date' => ['sometimes', 'boolean'],
             'sheets' => ['required', 'string', 'max:1000000'],
@@ -215,31 +217,100 @@ class ImportController extends Controller
             }
         }
 
+        foreach ($overrides as $role => $label) {
+            if (! is_string($role) || ! is_string($label)) {
+                throw ValidationException::withMessages(['column_overrides' => 'Column overrides must contain text role names and labels.']);
+            }
+        }
+
+        $normalizedSheets = [];
+        foreach (array_values($sheets) as $index => $sheet) {
+            $normalizedSheets[] = [
+                'index' => (int) ($sheet['index'] ?? $index),
+                'name' => mb_substr(trim($sheet['name']), 0, 500),
+                'header_row_number' => max(1, (int) ($sheet['header_row_number'] ?? 1)),
+                'headers' => array_map(fn ($header): string => mb_substr(trim((string) $header), 0, 500), $sheet['headers']),
+            ];
+        }
+        ksort($overrides);
+        $mappingFingerprint = hash('sha256', json_encode([
+            'report_date' => $validated['report_date'],
+            'manual_date' => (bool) ($validated['manual_date'] ?? false),
+            'sheets' => $normalizedSheets,
+            'column_overrides' => $overrides,
+        ], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
+
         $uploaded = $request->file('file');
+        $this->assertSupportedImportFile($uploaded);
         $name = basename(str_replace('\\', '/', $uploaded->getClientOriginalName()));
         $sha256 = hash_file('sha256', $uploaded->getRealPath());
         $identityHash = hash('sha256', mb_strtolower(trim($name)));
         $organizationId = $this->context->requireId();
         $userId = (int) $request->user()->id;
-        $result = DB::transaction(function () use ($uploaded, $name, $sha256, $identityHash, $organizationId, $userId, $validated, $sheets, $overrides): array {
+        $result = DB::transaction(function () use ($uploaded, $name, $sha256, $identityHash, $organizationId, $userId, $validated, $normalizedSheets, $overrides, $mappingFingerprint, $contentStorage): array {
             $file = DB::table('import_files')->where('organization_id', $organizationId)
                 ->where('identity_hash', $identityHash)->lockForUpdate()->first();
 
             if ($file && hash_equals((string) $file->sha256, $sha256)) {
-                $completedRun = DB::table('import_runs')->where('import_file_id', $file->id)
+                $matchingRun = DB::table('import_runs')->where('import_file_id', $file->id)
                     ->where('organization_id', $organizationId)->where('report_date', $validated['report_date'])
-                    ->where('status', 'published')->orderByDesc('revision')->first();
-                if ($completedRun) {
+                    ->where('mapping_fingerprint', $mappingFingerprint)
+                    ->whereIn('status', ['importing', 'published'])->orderByDesc('revision')->first();
+
+                if ($matchingRun?->status === 'published') {
                     return [
                         'already_imported' => true,
+                        'resumed' => false,
                         'file_id' => (string) $file->id,
-                        'run_id' => (string) $completedRun->id,
+                        'run_id' => (string) $matchingRun->id,
                         'sheet_ids' => [],
-                        'revision' => (int) $completedRun->revision,
+                        'revision' => (int) $matchingRun->revision,
                         'counts' => [
-                            'accepted' => (int) $completedRun->accepted_rows_count,
-                            'duplicates' => (int) $completedRun->duplicate_rows_count,
-                            'rejected' => (int) $completedRun->rejected_rows_count,
+                            'accepted' => (int) $matchingRun->accepted_rows_count,
+                            'duplicates' => (int) $matchingRun->duplicate_rows_count,
+                            'rejected' => (int) $matchingRun->rejected_rows_count,
+                        ],
+                    ];
+                }
+
+                if ($matchingRun?->status === 'importing') {
+                    $sheetIds = DB::table('import_sheets')->where('import_run_id', $matchingRun->id)
+                        ->where('organization_id', $organizationId)->pluck('id', 'source_sheet_index')
+                        ->map(fn ($id): string => (string) $id)->all();
+
+                    if (count($sheetIds) === count($normalizedSheets)) {
+                        return [
+                            'already_imported' => false,
+                            'resumed' => true,
+                            'file_id' => (string) $file->id,
+                            'run_id' => (string) $matchingRun->id,
+                            'sheet_ids' => $sheetIds,
+                            'revision' => (int) $matchingRun->revision,
+                            'counts' => [
+                                'accepted' => (int) $matchingRun->accepted_rows_count,
+                                'duplicates' => (int) $matchingRun->duplicate_rows_count,
+                                'rejected' => (int) $matchingRun->rejected_rows_count,
+                            ],
+                        ];
+                    }
+                }
+
+                // Preserve idempotency for published runs created before mapping fingerprints existed.
+                $legacyPublishedRun = DB::table('import_runs')->where('import_file_id', $file->id)
+                    ->where('organization_id', $organizationId)->where('report_date', $validated['report_date'])
+                    ->whereNull('mapping_fingerprint')->where('status', 'published')->orderByDesc('revision')->first();
+                if ($legacyPublishedRun) {
+                    return [
+                        'already_imported' => true,
+                        'resumed' => false,
+                        'file_id' => (string) $file->id,
+                        'run_id' => (string) $legacyPublishedRun->id,
+                        'sheet_ids' => [],
+                        'revision' => (int) $legacyPublishedRun->revision,
+                        'counts' => [
+                            'accepted' => (int) $legacyPublishedRun->accepted_rows_count,
+                            'duplicates' => (int) $legacyPublishedRun->duplicate_rows_count,
+                            'rejected' => (int) $legacyPublishedRun->rejected_rows_count,
                         ],
                     ];
                 }
@@ -278,6 +349,7 @@ class ImportController extends Controller
                 'uploaded_by' => $userId,
                 'revision' => $revision,
                 'mapping_version' => 1,
+                'mapping_fingerprint' => $mappingFingerprint,
                 'duplicate_policy' => 'preserve_and_mark',
                 'report_date' => $validated['report_date'],
                 'report_date_is_manual' => (bool) ($validated['manual_date'] ?? false),
@@ -293,36 +365,38 @@ class ImportController extends Controller
                 'updated_at' => $now,
             ]);
 
+            $contentId = (string) Str::ulid();
             DB::table('import_file_contents')->insert([
-                'id' => (string) Str::ulid(),
+                'id' => $contentId,
                 'organization_id' => $organizationId,
                 'import_file_id' => $fileId,
                 'import_run_id' => $runId,
                 'media_type' => $uploaded->getClientMimeType(),
                 'sha256' => $sha256,
-                'contents' => file_get_contents($uploaded->getRealPath()),
+                'contents' => null,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+            $contentStorage->store($contentId, $uploaded->getRealPath());
 
             $sheetIds = [];
-            foreach (array_values($sheets) as $index => $sheet) {
+            foreach ($normalizedSheets as $sheet) {
                 $sheetId = (string) Str::ulid();
-                $headers = array_map(fn ($header): string => mb_substr(trim((string) $header), 0, 500), $sheet['headers']);
+                $headers = $sheet['headers'];
                 DB::table('import_sheets')->insert([
                     'id' => $sheetId,
                     'organization_id' => $organizationId,
                     'import_run_id' => $runId,
-                    'source_sheet_index' => (int) ($sheet['index'] ?? $index),
-                    'source_sheet_name' => mb_substr((string) $sheet['name'], 0, 500),
+                    'source_sheet_index' => $sheet['index'],
+                    'source_sheet_name' => $sheet['name'],
                     'source_headers' => json_encode($headers, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
-                    'header_row_number' => max(1, (int) ($sheet['header_row_number'] ?? 1)),
+                    'header_row_number' => $sheet['header_row_number'],
                     'data_rows_count' => 0,
                     'detected_columns_count' => count($headers),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
-                $sheetIds[(int) ($sheet['index'] ?? $index)] = $sheetId;
+                $sheetIds[$sheet['index']] = $sheetId;
             }
 
             foreach ($overrides as $role => $label) {
@@ -333,6 +407,7 @@ class ImportController extends Controller
 
             return [
                 'already_imported' => false,
+                'resumed' => false,
                 'file_id' => $fileId,
                 'run_id' => $runId,
                 'sheet_ids' => $sheetIds,
@@ -616,5 +691,34 @@ class ImportController extends Controller
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+    }
+
+    private function assertSupportedImportFile(UploadedFile $file): void
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        $handle = fopen($file->getRealPath(), 'rb');
+        $signature = $handle === false ? '' : (fread($handle, 16) ?: '');
+        if ($handle !== false) {
+            fclose($handle);
+        }
+
+        $isZipWorkbook = str_starts_with($signature, "PK\x03\x04");
+        $isLegacyWorkbook = str_starts_with($signature, "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1");
+        $isDelimitedText = ! str_contains($signature, "\0")
+            && preg_match('/[,;\t\r\n]/', $signature) === 1;
+
+        $supported = match ($extension) {
+            'xlsx' => $isZipWorkbook,
+            'xls' => $isLegacyWorkbook,
+            // Some Bosta exports are OpenXML workbooks saved with a .csv filename.
+            'csv' => $isZipWorkbook || $isLegacyWorkbook || $isDelimitedText,
+            default => false,
+        };
+
+        if (! $supported) {
+            throw ValidationException::withMessages([
+                'file' => 'Upload a valid Excel workbook (.xlsx or .xls) or a delimited CSV file.',
+            ]);
+        }
     }
 }

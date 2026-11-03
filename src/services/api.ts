@@ -151,7 +151,7 @@ export async function startWorkbookImport(
   manualDate: boolean,
   parsed: ParseResult,
   columnOverrides: Record<string, string>,
-): Promise<{ alreadyImported: boolean; fileId: string; runId: string; sheetIds: Record<number, string>; revision: number; counts: { accepted: number; duplicates: number; rejected: number } }> {
+): Promise<{ alreadyImported: boolean; resumed: boolean; fileId: string; runId: string; sheetIds: Record<number, string>; revision: number; counts: { accepted: number; duplicates: number; rejected: number } }> {
   const body = new FormData();
   body.set('file', file, file.name);
   body.set('report_date', reportDate);
@@ -166,6 +166,7 @@ export async function startWorkbookImport(
 
   const result = await request<{
     already_imported: boolean;
+    resumed: boolean;
     file_id: string;
     run_id: string;
     sheet_ids: Record<string, string>;
@@ -175,6 +176,7 @@ export async function startWorkbookImport(
 
   return {
     alreadyImported: result.already_imported,
+    resumed: result.resumed,
     fileId: result.file_id,
     runId: result.run_id,
     sheetIds: Object.fromEntries(Object.entries(result.sheet_ids).map(([index, id]) => [Number(index), id])),
@@ -194,7 +196,15 @@ export async function uploadWorkbookRows(
 ): Promise<void> {
   await request(`${organizationPath(slug)}/imports/${fileId}/runs/${runId}/sheets/${sheetId}/chunks`, {
     method: 'POST',
-    body: JSON.stringify({ chunk_index: chunkIndex, rows, column_overrides: columnOverrides }),
+    body: JSON.stringify({
+      chunk_index: chunkIndex,
+      rows: rows.map((row) => ({
+        source_row_number: row.sourceRowNumber,
+        values: row.values,
+        ...(row.dashboardRecord ? { dashboard_record: row.dashboardRecord } : {}),
+      })),
+      column_overrides: columnOverrides,
+    }),
   });
 }
 

@@ -80,7 +80,9 @@ export async function processExcelFile(
       return result;
     } catch {
       // Fallback to main thread execution if Worker creation failed (e.g. strict CSP or sandbox)
-      const res = parseExcelBuffer(buffer, fileId, file.name, shipmentDate, overrides);
+      const res = parseExcelBuffer(buffer, fileId, file.name, shipmentDate, overrides, {
+        includeDashboardRecords: false,
+      });
       onProgress?.({
         fileId,
         fileName: file.name,
@@ -92,7 +94,9 @@ export async function processExcelFile(
   }
 
   // Direct main thread fallback
-  const res = parseExcelBuffer(buffer, fileId, file.name, shipmentDate, overrides);
+  const res = parseExcelBuffer(buffer, fileId, file.name, shipmentDate, overrides, {
+    includeDashboardRecords: false,
+  });
   onProgress?.({
     fileId,
     fileName: file.name,

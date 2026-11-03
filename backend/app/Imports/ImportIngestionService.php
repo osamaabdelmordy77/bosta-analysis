@@ -142,6 +142,9 @@ class ImportIngestionService
             $attempts = [];
             $issues = [];
             $shipmentIdsInChunk = [];
+            $shipmentIdByTrackingHash = [];
+            $businessIdCache = [];
+            $hubIdCache = [];
             $accepted = 0;
             $duplicates = 0;
             $rejected = 0;
@@ -199,24 +202,30 @@ class ImportIngestionService
                 }
 
                 $trackingHash = hash('sha256', $organizationId."\0".mb_strtolower($tracking), true);
-                $shipmentId = (string) Str::ulid();
-                DB::table('shipments')->insertOrIgnore([
-                    'id' => $shipmentId,
-                    'organization_id' => $organizationId,
-                    'tracking_fingerprint' => $trackingHash,
-                    'created_at' => $timestamp,
-                    'updated_at' => $timestamp,
-                ]);
-                $shipmentId = (string) DB::table('shipments')
-                    ->where('organization_id', $organizationId)
-                    ->where('tracking_fingerprint', $trackingHash)
-                    ->value('id');
+                $trackingKey = bin2hex($trackingHash);
+                if (array_key_exists($trackingKey, $shipmentIdByTrackingHash)) {
+                    $shipmentId = $shipmentIdByTrackingHash[$trackingKey];
+                } else {
+                    $shipmentId = (string) Str::ulid();
+                    DB::table('shipments')->insertOrIgnore([
+                        'id' => $shipmentId,
+                        'organization_id' => $organizationId,
+                        'tracking_fingerprint' => $trackingHash,
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp,
+                    ]);
+                    $shipmentId = (string) DB::table('shipments')
+                        ->where('organization_id', $organizationId)
+                        ->where('tracking_fingerprint', $trackingHash)
+                        ->value('id');
+                    $shipmentIdByTrackingHash[$trackingKey] = $shipmentId;
+                }
 
-                $alreadyInRun = DB::table('shipment_snapshots')
+                $alreadyInRun = isset($shipmentIdsInChunk[$shipmentId]) || DB::table('shipment_snapshots')
                     ->where('organization_id', $organizationId)
                     ->where('shipment_id', $shipmentId)
                     ->where('import_run_id', $runId)
-                    ->exists() || isset($shipmentIdsInChunk[$shipmentId]);
+                    ->exists();
 
                 if ($alreadyInRun) {
                     $sourceRows[array_key_last($sourceRows)]['status'] = 'duplicate';
@@ -234,6 +243,7 @@ class ImportIngestionService
                     $mapped['shipment_snapshots']['business_name'] ?? null,
                     $mapped['shipment_snapshots']['business_external_id'] ?? null,
                     $timestamp,
+                    $businessIdCache,
                 );
                 $hubIds = [];
                 foreach ([
@@ -248,6 +258,7 @@ class ImportIngestionService
                         $organizationId,
                         $mapped['shipment_snapshot_routing'][$nameColumn] ?? null,
                         $timestamp,
+                        $hubIdCache,
                     );
                 }
 
@@ -508,7 +519,8 @@ class ImportIngestionService
         return min(8, (int) ($match[1] ?? 0));
     }
 
-    private function businessId(string $organizationId, mixed $name, mixed $externalId, mixed $now): ?string
+    /** @param array<string,?string> $cache */
+    private function businessId(string $organizationId, mixed $name, mixed $externalId, mixed $now, array &$cache): ?string
     {
         $canonical = $this->cleanString($name) ?? $this->cleanString($externalId);
         if ($canonical === null) {
@@ -518,6 +530,11 @@ class ImportIngestionService
         $nameHash = hash('sha256', $organizationId."\0".mb_strtolower($canonical), true);
         $external = $this->cleanString($externalId);
         $externalHash = $external === null ? null : hash('sha256', $organizationId."\0".mb_strtolower($external), true);
+        $cacheKey = bin2hex($externalHash ?? $nameHash);
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
         $query = DB::table('businesses')->where('organization_id', $organizationId);
         if ($externalHash !== null) {
             $query->where('external_id_hash', $externalHash);
@@ -526,7 +543,7 @@ class ImportIngestionService
         }
         $id = $query->value('id');
         if ($id !== null) {
-            return (string) $id;
+            return $cache[$cacheKey] = (string) $id;
         }
 
         $newId = (string) Str::ulid();
@@ -541,11 +558,16 @@ class ImportIngestionService
             'updated_at' => $now,
         ]);
 
-        return (string) DB::table('businesses')->where('organization_id', $organizationId)
-            ->where('canonical_name_hash', $nameHash)->value('id');
+        $query = DB::table('businesses')->where('organization_id', $organizationId);
+        $id = $externalHash === null
+            ? $query->where('canonical_name_hash', $nameHash)->value('id')
+            : $query->where('external_id_hash', $externalHash)->value('id');
+
+        return $cache[$cacheKey] = $id === null ? null : (string) $id;
     }
 
-    private function hubId(string $organizationId, mixed $name, mixed $now): ?string
+    /** @param array<string,?string> $cache */
+    private function hubId(string $organizationId, mixed $name, mixed $now, array &$cache): ?string
     {
         $canonical = $this->cleanString($name);
         if ($canonical === null) {
@@ -553,10 +575,15 @@ class ImportIngestionService
         }
 
         $nameHash = hash('sha256', $organizationId."\0".mb_strtolower($canonical), true);
+        $cacheKey = bin2hex($nameHash);
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
         $id = DB::table('hubs')->where('organization_id', $organizationId)
             ->where('canonical_name_hash', $nameHash)->value('id');
         if ($id !== null) {
-            return (string) $id;
+            return $cache[$cacheKey] = (string) $id;
         }
 
         $newId = (string) Str::ulid();
@@ -573,6 +600,10 @@ class ImportIngestionService
 
         $hubId = (string) DB::table('hubs')->where('organization_id', $organizationId)
             ->where('canonical_name_hash', $nameHash)->value('id');
+        if ($hubId === '') {
+            return $cache[$cacheKey] = null;
+        }
+
         $aliasHash = hash('sha256', $organizationId."\0".mb_strtolower($canonical), true);
         DB::table('hub_aliases')->insertOrIgnore([
             'organization_id' => $organizationId,
@@ -583,7 +614,7 @@ class ImportIngestionService
             'updated_at' => $now,
         ]);
 
-        return $hubId;
+        return $cache[$cacheKey] = $hubId;
     }
 
     private function relatedRow(string $table, array $mapped, string $organizationId, string $snapshotId, mixed $now): ?array

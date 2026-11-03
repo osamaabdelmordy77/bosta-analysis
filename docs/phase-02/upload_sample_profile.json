@@ -1,0 +1,1981 @@
+{
+  "file_name": "Deliveries_Export_2026-10-25-1792947041986.csv",
+  "signature_format": "OOXML/XLSX despite .csv filename extension",
+  "sheet_name": "Deliveries",
+  "sheet_count": 1,
+  "header_row_number": 1,
+  "source_column_count": 211,
+  "manifest_column_count": 211,
+  "manifest_labels_match_in_order": true,
+  "physical_source_rows": 14407,
+  "parsed_shipments": 14407,
+  "duplicate_tracking_rows": 0,
+  "missing_tracking_rows": 0,
+  "shipment_date_from_filename": "2026-10-25",
+  "columns": [
+    {
+      "column": 1,
+      "label": "Business",
+      "manifest_label": "Business",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 2,
+      "label": "Business ID",
+      "manifest_label": "Business ID",
+      "provisional_type": "string(100)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 3,
+      "label": "Tracking Number",
+      "manifest_label": "Tracking Number",
+      "provisional_type": "string(100)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 4,
+      "label": "Package Size",
+      "manifest_label": "Package Size",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 5,
+      "label": "Created At",
+      "manifest_label": "Created At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 6,
+      "label": "Picked-Up Date",
+      "manifest_label": "Picked-Up Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14357,
+      "parsed_value_types": {
+        "string": 14357
+      }
+    },
+    {
+      "column": 7,
+      "label": "Picked From Customer Date",
+      "manifest_label": "Picked From Customer Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 115,
+      "parsed_value_types": {
+        "string": 115
+      }
+    },
+    {
+      "column": 8,
+      "label": "Expected Pickup Date",
+      "manifest_label": "Expected Pickup Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 50,
+      "parsed_value_types": {
+        "string": 50
+      }
+    },
+    {
+      "column": 9,
+      "label": "Expected Delivery Date",
+      "manifest_label": "Expected Delivery Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 13279,
+      "parsed_value_types": {
+        "string": 13279
+      }
+    },
+    {
+      "column": 10,
+      "label": "Expected Return Date",
+      "manifest_label": "Expected Return Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 1078,
+      "parsed_value_types": {
+        "string": 1078
+      }
+    },
+    {
+      "column": 11,
+      "label": "Pickup Request Id",
+      "manifest_label": "Pickup Request Id",
+      "provisional_type": "string(100)",
+      "nonempty_values": 7206,
+      "parsed_value_types": {
+        "string": 7206
+      }
+    },
+    {
+      "column": 12,
+      "label": "Consignee Name",
+      "manifest_label": "Consignee Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 13,
+      "label": "Consignee phone",
+      "manifest_label": "Consignee phone",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 14,
+      "label": "Pickup First Line",
+      "manifest_label": "Pickup First Line",
+      "provisional_type": "text",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 15,
+      "label": "Pickup Second Line",
+      "manifest_label": "Pickup Second Line",
+      "provisional_type": "text",
+      "nonempty_values": 6514,
+      "parsed_value_types": {
+        "string": 6514
+      }
+    },
+    {
+      "column": 16,
+      "label": "Pickup Zone",
+      "manifest_label": "Pickup Zone",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14016,
+      "parsed_value_types": {
+        "string": 14016
+      }
+    },
+    {
+      "column": 17,
+      "label": "Pickup City",
+      "manifest_label": "Pickup City",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 18,
+      "label": "Pickup District",
+      "manifest_label": "Pickup District",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14031,
+      "parsed_value_types": {
+        "string": 14031
+      }
+    },
+    {
+      "column": 19,
+      "label": "DropOff First Line",
+      "manifest_label": "DropOff First Line",
+      "provisional_type": "text",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 20,
+      "label": "DropOff Second Line",
+      "manifest_label": "DropOff Second Line",
+      "provisional_type": "text",
+      "nonempty_values": 2627,
+      "parsed_value_types": {
+        "string": 2627
+      }
+    },
+    {
+      "column": 21,
+      "label": "DropOff Zone",
+      "manifest_label": "DropOff Zone",
+      "provisional_type": "string(191)",
+      "nonempty_values": 7703,
+      "parsed_value_types": {
+        "string": 7703
+      }
+    },
+    {
+      "column": 22,
+      "label": "DropOff City",
+      "manifest_label": "DropOff City",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 23,
+      "label": "DropOff District",
+      "manifest_label": "DropOff District",
+      "provisional_type": "string(191)",
+      "nonempty_values": 7440,
+      "parsed_value_types": {
+        "string": 7440
+      }
+    },
+    {
+      "column": 24,
+      "label": "Business Return Name",
+      "manifest_label": "Business Return Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 25,
+      "label": "Cod Amount",
+      "manifest_label": "Cod Amount",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 26,
+      "label": "Original Cod Amount",
+      "manifest_label": "Original Cod Amount",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 1078,
+      "parsed_value_types": {
+        "string": 1078
+      }
+    },
+    {
+      "column": 27,
+      "label": "Star name",
+      "manifest_label": "Star name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 28,
+      "label": "Star ID",
+      "manifest_label": "Star ID",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 29,
+      "label": "Star Phone",
+      "manifest_label": "Star Phone",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 30,
+      "label": "Merchant name",
+      "manifest_label": "Merchant name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 18,
+      "parsed_value_types": {
+        "string": 18
+      }
+    },
+    {
+      "column": 31,
+      "label": "Notes",
+      "manifest_label": "Notes",
+      "provisional_type": "text",
+      "nonempty_values": 6891,
+      "parsed_value_types": {
+        "string": 6891
+      }
+    },
+    {
+      "column": 32,
+      "label": "Type",
+      "manifest_label": "Type",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 33,
+      "label": "Business Reference Number",
+      "manifest_label": "Business Reference Number",
+      "provisional_type": "string(100)",
+      "nonempty_values": 10184,
+      "parsed_value_types": {
+        "string": 10184
+      }
+    },
+    {
+      "column": 34,
+      "label": "Business Delivery Promise",
+      "manifest_label": "Business Delivery Promise",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14,
+      "parsed_value_types": {
+        "string": 14
+      }
+    },
+    {
+      "column": 35,
+      "label": "Delivered at",
+      "manifest_label": "Delivered at",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 36,
+      "label": "Delivery State",
+      "manifest_label": "Delivery State",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 37,
+      "label": "Updated at",
+      "manifest_label": "Updated at",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 38,
+      "label": "Current Hub",
+      "manifest_label": "Current Hub",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 39,
+      "label": "Current Hub Display Code",
+      "manifest_label": "Current Hub Display Code",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 40,
+      "label": "Current Parent Hub Display Code",
+      "manifest_label": "Current Parent Hub Display Code",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 41,
+      "label": "Number Of attempts",
+      "manifest_label": "Number Of attempts",
+      "provisional_type": "unsignedInteger",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 42,
+      "label": "Forward Attempts Count",
+      "manifest_label": "Forward Attempts Count",
+      "provisional_type": "unsignedInteger",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 43,
+      "label": "Return Attempts Count",
+      "manifest_label": "Return Attempts Count",
+      "provisional_type": "unsignedInteger",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 44,
+      "label": "Received Time",
+      "manifest_label": "Received Time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 45,
+      "label": "Location Inside Hub",
+      "manifest_label": "Location Inside Hub",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 46,
+      "label": "Is WhatsApp Cancellation",
+      "manifest_label": "Is WhatsApp Cancellation",
+      "provisional_type": "boolean",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 47,
+      "label": "Cancellation Time",
+      "manifest_label": "Cancellation Time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 1078,
+      "parsed_value_types": {
+        "string": 1078
+      }
+    },
+    {
+      "column": 48,
+      "label": "Cancellation Reason",
+      "manifest_label": "Cancellation Reason",
+      "provisional_type": "text",
+      "nonempty_values": 241,
+      "parsed_value_types": {
+        "string": 241
+      }
+    },
+    {
+      "column": 49,
+      "label": "Warehouse Tarnsit Seal Number",
+      "manifest_label": "Warehouse Tarnsit Seal Number",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 50,
+      "label": "First Attempt Date",
+      "manifest_label": "First Attempt Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 51,
+      "label": "In Transit To",
+      "manifest_label": "In Transit To",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 52,
+      "label": "SLA Date",
+      "manifest_label": "SLA Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 53,
+      "label": "Exceeded SLA",
+      "manifest_label": "Exceeded SLA",
+      "provisional_type": "boolean",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 54,
+      "label": "Exceeded Delivery SLA",
+      "manifest_label": "Exceeded Delivery SLA",
+      "provisional_type": "boolean",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 55,
+      "label": "Delivery SLA Date",
+      "manifest_label": "Delivery SLA Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 56,
+      "label": "Investigation At",
+      "manifest_label": "Investigation At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 57,
+      "label": "Scheduled At",
+      "manifest_label": "Scheduled At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 58,
+      "label": "Lost At",
+      "manifest_label": "Lost At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 59,
+      "label": "Lost Liability Reasons",
+      "manifest_label": "Lost Liability Reasons",
+      "provisional_type": "text",
+      "nonempty_values": 4,
+      "parsed_value_types": {
+        "string": 4
+      }
+    },
+    {
+      "column": 60,
+      "label": "Loss Liable Hub Name",
+      "manifest_label": "Loss Liable Hub Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 4,
+      "parsed_value_types": {
+        "string": 4
+      }
+    },
+    {
+      "column": 61,
+      "label": "Damaged At",
+      "manifest_label": "Damaged At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 62,
+      "label": "Last Outbound Agent",
+      "manifest_label": "Last Outbound Agent",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 63,
+      "label": "Is OnHold",
+      "manifest_label": "Is OnHold",
+      "provisional_type": "boolean",
+      "nonempty_values": 775,
+      "parsed_value_types": {
+        "string": 775
+      }
+    },
+    {
+      "column": 64,
+      "label": "OnHoldDate",
+      "manifest_label": "OnHoldDate",
+      "provisional_type": "dateTime",
+      "nonempty_values": 751,
+      "parsed_value_types": {
+        "string": 751
+      }
+    },
+    {
+      "column": 65,
+      "label": "Assigned Hub",
+      "manifest_label": "Assigned Hub",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14327,
+      "parsed_value_types": {
+        "string": 14327
+      }
+    },
+    {
+      "column": 66,
+      "label": "Assigned Hub Display Code",
+      "manifest_label": "Assigned Hub Display Code",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14247,
+      "parsed_value_types": {
+        "string": 14247
+      }
+    },
+    {
+      "column": 67,
+      "label": "Assigned Parent Hub Display Code",
+      "manifest_label": "Assigned Parent Hub Display Code",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14247,
+      "parsed_value_types": {
+        "string": 14247
+      }
+    },
+    {
+      "column": 68,
+      "label": "Auto Assigned Hub",
+      "manifest_label": "Auto Assigned Hub",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14282,
+      "parsed_value_types": {
+        "string": 14282
+      }
+    },
+    {
+      "column": 69,
+      "label": "RTO Time",
+      "manifest_label": "RTO Time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 1078,
+      "parsed_value_types": {
+        "string": 1078
+      }
+    },
+    {
+      "column": 70,
+      "label": "Price Before VAT",
+      "manifest_label": "Price Before VAT",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 71,
+      "label": "Price After VAT",
+      "manifest_label": "Price After VAT",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 72,
+      "label": "Zero COD Discount",
+      "manifest_label": "Zero COD Discount",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 73,
+      "label": "Extra COD Fees",
+      "manifest_label": "Extra COD Fees",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 1017,
+      "parsed_value_types": {
+        "string": 1017
+      }
+    },
+    {
+      "column": 74,
+      "label": "Insurance Fees",
+      "manifest_label": "Insurance Fees",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 2906,
+      "parsed_value_types": {
+        "string": 2906
+      }
+    },
+    {
+      "column": 75,
+      "label": "Next Day Fees",
+      "manifest_label": "Next Day Fees",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 3421,
+      "parsed_value_types": {
+        "string": 3421
+      }
+    },
+    {
+      "column": 76,
+      "label": "Promotion Discount",
+      "manifest_label": "Promotion Discount",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 77,
+      "label": "Last Transfer Date",
+      "manifest_label": "Last Transfer Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 78,
+      "label": "No. of phone calls",
+      "manifest_label": "No. of phone calls",
+      "provisional_type": "unsignedInteger",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 79,
+      "label": "Last phone call date time",
+      "manifest_label": "Last phone call date time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 793,
+      "parsed_value_types": {
+        "string": 793
+      }
+    },
+    {
+      "column": 80,
+      "label": "No. of SMS",
+      "manifest_label": "No. of SMS",
+      "provisional_type": "unsignedInteger",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 81,
+      "label": "Last SMS date time",
+      "manifest_label": "Last SMS date time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 53,
+      "parsed_value_types": {
+        "string": 53
+      }
+    },
+    {
+      "column": 82,
+      "label": "Package type",
+      "manifest_label": "Package type",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 83,
+      "label": "Description",
+      "manifest_label": "Description",
+      "provisional_type": "text",
+      "nonempty_values": 13367,
+      "parsed_value_types": {
+        "string": 13367
+      }
+    },
+    {
+      "column": 84,
+      "label": "Items",
+      "manifest_label": "Items",
+      "provisional_type": "unsignedInteger",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 85,
+      "label": "Actual Weight",
+      "manifest_label": "Actual Weight",
+      "provisional_type": "decimal(14,3)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 86,
+      "label": "Volumetric Weight",
+      "manifest_label": "Volumetric Weight",
+      "provisional_type": "decimal(14,3)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 87,
+      "label": "Pickup Sector",
+      "manifest_label": "Pickup Sector",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 88,
+      "label": "Dropoff Sector",
+      "manifest_label": "Dropoff Sector",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 89,
+      "label": "Is Confirmed Delivery",
+      "manifest_label": "Is Confirmed Delivery",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 90,
+      "label": "Confirmed Delivery At",
+      "manifest_label": "Confirmed Delivery At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 91,
+      "label": "Is Auto Delivered",
+      "manifest_label": "Is Auto Delivered",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 92,
+      "label": "Old Type",
+      "manifest_label": "Old Type",
+      "provisional_type": "string(191)",
+      "nonempty_values": 1078,
+      "parsed_value_types": {
+        "string": 1078
+      }
+    },
+    {
+      "column": 93,
+      "label": "FXF SO Number",
+      "manifest_label": "FXF SO Number",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 94,
+      "label": "First Hub",
+      "manifest_label": "First Hub",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 95,
+      "label": "Virtual Star ID",
+      "manifest_label": "Virtual Star ID",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 96,
+      "label": "First Receiving By",
+      "manifest_label": "First Receiving By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 97,
+      "label": "Last Dispatch Hub",
+      "manifest_label": "Last Dispatch Hub",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14338,
+      "parsed_value_types": {
+        "string": 14338
+      }
+    },
+    {
+      "column": 98,
+      "label": "Collected From Consignee by",
+      "manifest_label": "Collected From Consignee by",
+      "provisional_type": "string(191)",
+      "nonempty_values": 115,
+      "parsed_value_types": {
+        "string": 115
+      }
+    },
+    {
+      "column": 99,
+      "label": "Payment Type",
+      "manifest_label": "Payment Type",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 100,
+      "label": "Seal Number",
+      "manifest_label": "Seal Number",
+      "provisional_type": "string(100)",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 101,
+      "label": "Barcode Reference",
+      "manifest_label": "Barcode Reference",
+      "provisional_type": "string(100)",
+      "nonempty_values": 533,
+      "parsed_value_types": {
+        "string": 533
+      }
+    },
+    {
+      "column": 102,
+      "label": "Latest Exception Reason",
+      "manifest_label": "Latest Exception Reason",
+      "provisional_type": "text",
+      "nonempty_values": 753,
+      "parsed_value_types": {
+        "string": 753
+      }
+    },
+    {
+      "column": 103,
+      "label": "Address Type",
+      "manifest_label": "Address Type",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14,
+      "parsed_value_types": {
+        "string": 14
+      }
+    },
+    {
+      "column": 104,
+      "label": "Business Request date",
+      "manifest_label": "Business Request date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 76,
+      "parsed_value_types": {
+        "string": 76
+      }
+    },
+    {
+      "column": 105,
+      "label": "New material request",
+      "manifest_label": "New material request",
+      "provisional_type": "string(191)",
+      "nonempty_values": 76,
+      "parsed_value_types": {
+        "string": 76
+      }
+    },
+    {
+      "column": 106,
+      "label": "International Tracking Number",
+      "manifest_label": "International Tracking Number",
+      "provisional_type": "string(100)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 107,
+      "label": "Multi-package",
+      "manifest_label": "Multi-package",
+      "provisional_type": "string(191)",
+      "nonempty_values": 12,
+      "parsed_value_types": {
+        "string": 12
+      }
+    },
+    {
+      "column": 108,
+      "label": "Received Transfer date",
+      "manifest_label": "Received Transfer date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 1589,
+      "parsed_value_types": {
+        "string": 1589
+      }
+    },
+    {
+      "column": 109,
+      "label": "First Mile District Code",
+      "manifest_label": "First Mile District Code",
+      "provisional_type": "string(191)",
+      "nonempty_values": 14036,
+      "parsed_value_types": {
+        "string": 14036
+      }
+    },
+    {
+      "column": 110,
+      "label": "Custom VAT Type",
+      "manifest_label": "Custom VAT Type",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 111,
+      "label": "Custom VAT Value",
+      "manifest_label": "Custom VAT Value",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 112,
+      "label": "Star Rating",
+      "manifest_label": "Star Rating",
+      "provisional_type": "decimal(14,3)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 113,
+      "label": "Star Comment",
+      "manifest_label": "Star Comment",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 114,
+      "label": "Service Rating",
+      "manifest_label": "Service Rating",
+      "provisional_type": "decimal(14,3)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 115,
+      "label": "Service Comment",
+      "manifest_label": "Service Comment",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 116,
+      "label": "Escalation Severity Level",
+      "manifest_label": "Escalation Severity Level",
+      "provisional_type": "string(191)",
+      "nonempty_values": 7,
+      "parsed_value_types": {
+        "string": 7
+      }
+    },
+    {
+      "column": 117,
+      "label": "Escalated At",
+      "manifest_label": "Escalated At",
+      "provisional_type": "dateTime",
+      "nonempty_values": 7,
+      "parsed_value_types": {
+        "string": 7
+      }
+    },
+    {
+      "column": 118,
+      "label": "Latest Severity Update Date",
+      "manifest_label": "Latest Severity Update Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 7,
+      "parsed_value_types": {
+        "string": 7
+      }
+    },
+    {
+      "column": 119,
+      "label": "Ticket Number",
+      "manifest_label": "Ticket Number",
+      "provisional_type": "string(100)",
+      "nonempty_values": 7,
+      "parsed_value_types": {
+        "string": 7
+      }
+    },
+    {
+      "column": 120,
+      "label": "Ticket Category",
+      "manifest_label": "Ticket Category",
+      "provisional_type": "string(191)",
+      "nonempty_values": 7,
+      "parsed_value_types": {
+        "string": 7
+      }
+    },
+    {
+      "column": 121,
+      "label": "Scheduled By Business",
+      "manifest_label": "Scheduled By Business",
+      "provisional_type": "string(191)",
+      "nonempty_values": 23,
+      "parsed_value_types": {
+        "string": 23
+      }
+    },
+    {
+      "column": 122,
+      "label": "Scheduled By Consignee",
+      "manifest_label": "Scheduled By Consignee",
+      "provisional_type": "string(191)",
+      "nonempty_values": 314,
+      "parsed_value_types": {
+        "string": 314
+      }
+    },
+    {
+      "column": 123,
+      "label": "Goods Value",
+      "manifest_label": "Goods Value",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 5913,
+      "parsed_value_types": {
+        "string": 5913
+      }
+    },
+    {
+      "column": 124,
+      "label": "Proof of cost Attachment Date",
+      "manifest_label": "Proof of cost Attachment Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 30,
+      "parsed_value_types": {
+        "string": 30
+      }
+    },
+    {
+      "column": 125,
+      "label": "Allow TO Open Package",
+      "manifest_label": "Allow TO Open Package",
+      "provisional_type": "boolean",
+      "nonempty_values": 14407,
+      "parsed_value_types": {
+        "string": 14407
+      }
+    },
+    {
+      "column": 126,
+      "label": "L2 Street Code",
+      "manifest_label": "L2 Street Code",
+      "provisional_type": "string(191)",
+      "nonempty_values": 9617,
+      "parsed_value_types": {
+        "string": 9617
+      }
+    },
+    {
+      "column": 127,
+      "label": "Added To Route Date",
+      "manifest_label": "Added To Route Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 128,
+      "label": "Flex Ship Value",
+      "manifest_label": "Flex Ship Value",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 5277,
+      "parsed_value_types": {
+        "string": 5277
+      }
+    },
+    {
+      "column": 129,
+      "label": "Flex Ship Fees",
+      "manifest_label": "Flex Ship Fees",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 18,
+      "parsed_value_types": {
+        "string": 18
+      }
+    },
+    {
+      "column": 130,
+      "label": "Flex Ship Payment status",
+      "manifest_label": "Flex Ship Payment status",
+      "provisional_type": "string(191)",
+      "nonempty_values": 5277,
+      "parsed_value_types": {
+        "string": 5277
+      }
+    },
+    {
+      "column": 131,
+      "label": "Flex Ship Star ID",
+      "manifest_label": "Flex Ship Star ID",
+      "provisional_type": "string(191)",
+      "nonempty_values": 72,
+      "parsed_value_types": {
+        "string": 72
+      }
+    },
+    {
+      "column": 132,
+      "label": "Flex Ship Star Name",
+      "manifest_label": "Flex Ship Star Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 72,
+      "parsed_value_types": {
+        "string": 72
+      }
+    },
+    {
+      "column": 133,
+      "label": "Flex Ship Collection Date",
+      "manifest_label": "Flex Ship Collection Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 72,
+      "parsed_value_types": {
+        "string": 72
+      }
+    },
+    {
+      "column": 134,
+      "label": "Flex Ship Tips",
+      "manifest_label": "Flex Ship Tips",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 72,
+      "parsed_value_types": {
+        "string": 72
+      }
+    },
+    {
+      "column": 135,
+      "label": "Flash Tips",
+      "manifest_label": "Flash Tips",
+      "provisional_type": "decimal(18,4)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 136,
+      "label": "Online Payment Provider",
+      "manifest_label": "Online Payment Provider",
+      "provisional_type": "string(191)",
+      "nonempty_values": 65,
+      "parsed_value_types": {
+        "string": 65
+      }
+    },
+    {
+      "column": 137,
+      "label": "Brand ID",
+      "manifest_label": "Brand ID",
+      "provisional_type": "string(191)",
+      "nonempty_values": 73,
+      "parsed_value_types": {
+        "string": 73
+      }
+    },
+    {
+      "column": 138,
+      "label": "Brand Name",
+      "manifest_label": "Brand Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 73,
+      "parsed_value_types": {
+        "string": 73
+      }
+    },
+    {
+      "column": 139,
+      "label": "Attempt Type",
+      "manifest_label": "Attempt Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 140,
+      "label": "Attempt By",
+      "manifest_label": "Attempt By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 141,
+      "label": "Attempt HuB Name",
+      "manifest_label": "Attempt HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 142,
+      "label": "Attempt Date",
+      "manifest_label": "Attempt Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 143,
+      "label": "Exception Fake Attempt",
+      "manifest_label": "Exception Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 737,
+      "parsed_value_types": {
+        "string": 737
+      }
+    },
+    {
+      "column": 144,
+      "label": "Exception Reason",
+      "manifest_label": "Exception Reason",
+      "provisional_type": "text",
+      "nonempty_values": 737,
+      "parsed_value_types": {
+        "string": 737
+      }
+    },
+    {
+      "column": 145,
+      "label": "Exception time",
+      "manifest_label": "Exception time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 737,
+      "parsed_value_types": {
+        "string": 737
+      }
+    },
+    {
+      "column": 146,
+      "label": "Exception lat/long",
+      "manifest_label": "Exception lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 147,
+      "label": "Attempt 1 Type",
+      "manifest_label": "Attempt 1 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 148,
+      "label": "Attempt 1 By",
+      "manifest_label": "Attempt 1 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 149,
+      "label": "Attempt 1 HuB Name",
+      "manifest_label": "Attempt 1 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 150,
+      "label": "Attempt 1 Date",
+      "manifest_label": "Attempt 1 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 843,
+      "parsed_value_types": {
+        "string": 843
+      }
+    },
+    {
+      "column": 151,
+      "label": "Exception 1 Fake Attempt",
+      "manifest_label": "Exception 1 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 737,
+      "parsed_value_types": {
+        "string": 737
+      }
+    },
+    {
+      "column": 152,
+      "label": "Exception 1 Reason",
+      "manifest_label": "Exception 1 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 737,
+      "parsed_value_types": {
+        "string": 737
+      }
+    },
+    {
+      "column": 153,
+      "label": "Exception 1 time",
+      "manifest_label": "Exception 1 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 737,
+      "parsed_value_types": {
+        "string": 737
+      }
+    },
+    {
+      "column": 154,
+      "label": "Exception 1 lat/long",
+      "manifest_label": "Exception 1 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 155,
+      "label": "Attempt 2 Type",
+      "manifest_label": "Attempt 2 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 173,
+      "parsed_value_types": {
+        "string": 173
+      }
+    },
+    {
+      "column": 156,
+      "label": "Attempt 2 By",
+      "manifest_label": "Attempt 2 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 173,
+      "parsed_value_types": {
+        "string": 173
+      }
+    },
+    {
+      "column": 157,
+      "label": "Attempt 2 HuB Name",
+      "manifest_label": "Attempt 2 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 173,
+      "parsed_value_types": {
+        "string": 173
+      }
+    },
+    {
+      "column": 158,
+      "label": "Attempt 2 Date",
+      "manifest_label": "Attempt 2 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 173,
+      "parsed_value_types": {
+        "string": 173
+      }
+    },
+    {
+      "column": 159,
+      "label": "Exception 2 Fake Attempt",
+      "manifest_label": "Exception 2 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 164,
+      "parsed_value_types": {
+        "string": 164
+      }
+    },
+    {
+      "column": 160,
+      "label": "Exception 2 Reason",
+      "manifest_label": "Exception 2 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 164,
+      "parsed_value_types": {
+        "string": 164
+      }
+    },
+    {
+      "column": 161,
+      "label": "Exception 2 time",
+      "manifest_label": "Exception 2 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 164,
+      "parsed_value_types": {
+        "string": 164
+      }
+    },
+    {
+      "column": 162,
+      "label": "Exception 2 lat/long",
+      "manifest_label": "Exception 2 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 163,
+      "label": "Attempt 3 Type",
+      "manifest_label": "Attempt 3 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 164,
+      "label": "Attempt 3 By",
+      "manifest_label": "Attempt 3 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 165,
+      "label": "Attempt 3 HuB Name",
+      "manifest_label": "Attempt 3 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 166,
+      "label": "Attempt 3 Date",
+      "manifest_label": "Attempt 3 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 167,
+      "label": "Exception 3 Fake Attempt",
+      "manifest_label": "Exception 3 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 168,
+      "label": "Exception 3 Reason",
+      "manifest_label": "Exception 3 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 169,
+      "label": "Exception 3 time",
+      "manifest_label": "Exception 3 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 32,
+      "parsed_value_types": {
+        "string": 32
+      }
+    },
+    {
+      "column": 170,
+      "label": "Exception 3 lat/long",
+      "manifest_label": "Exception 3 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 171,
+      "label": "Attempt 4 Type",
+      "manifest_label": "Attempt 4 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 172,
+      "label": "Attempt 4 By",
+      "manifest_label": "Attempt 4 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 173,
+      "label": "Attempt 4 HuB Name",
+      "manifest_label": "Attempt 4 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 174,
+      "label": "Attempt 4 Date",
+      "manifest_label": "Attempt 4 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 175,
+      "label": "Exception 4 Fake Attempt",
+      "manifest_label": "Exception 4 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 176,
+      "label": "Exception 4 Reason",
+      "manifest_label": "Exception 4 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 177,
+      "label": "Exception 4 time",
+      "manifest_label": "Exception 4 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 178,
+      "label": "Exception 4 lat/long",
+      "manifest_label": "Exception 4 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 179,
+      "label": "Attempt 5 Type",
+      "manifest_label": "Attempt 5 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 180,
+      "label": "Attempt 5 By",
+      "manifest_label": "Attempt 5 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 181,
+      "label": "Attempt 5 HuB Name",
+      "manifest_label": "Attempt 5 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 182,
+      "label": "Attempt 5 Date",
+      "manifest_label": "Attempt 5 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 183,
+      "label": "Exception 5 Fake Attempt",
+      "manifest_label": "Exception 5 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 184,
+      "label": "Exception 5 Reason",
+      "manifest_label": "Exception 5 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 185,
+      "label": "Exception 5 time",
+      "manifest_label": "Exception 5 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 186,
+      "label": "Exception 5 lat/long",
+      "manifest_label": "Exception 5 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 187,
+      "label": "Attempt 6 Type",
+      "manifest_label": "Attempt 6 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 188,
+      "label": "Attempt 6 By",
+      "manifest_label": "Attempt 6 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 189,
+      "label": "Attempt 6 HuB Name",
+      "manifest_label": "Attempt 6 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 190,
+      "label": "Attempt 6 Date",
+      "manifest_label": "Attempt 6 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 191,
+      "label": "Exception 6 Fake Attempt",
+      "manifest_label": "Exception 6 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 192,
+      "label": "Exception 6 Reason",
+      "manifest_label": "Exception 6 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 193,
+      "label": "Exception 6 time",
+      "manifest_label": "Exception 6 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 194,
+      "label": "Exception 6 lat/long",
+      "manifest_label": "Exception 6 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 195,
+      "label": "Attempt 7 Type",
+      "manifest_label": "Attempt 7 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 196,
+      "label": "Attempt 7 By",
+      "manifest_label": "Attempt 7 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 197,
+      "label": "Attempt 7 HuB Name",
+      "manifest_label": "Attempt 7 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 198,
+      "label": "Attempt 7 Date",
+      "manifest_label": "Attempt 7 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 199,
+      "label": "Exception 7 Fake Attempt",
+      "manifest_label": "Exception 7 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 200,
+      "label": "Exception 7 Reason",
+      "manifest_label": "Exception 7 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 201,
+      "label": "Exception 7 time",
+      "manifest_label": "Exception 7 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 202,
+      "label": "Exception 7 lat/long",
+      "manifest_label": "Exception 7 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 203,
+      "label": "Attempt 8 Type",
+      "manifest_label": "Attempt 8 Type",
+      "provisional_type": "string(100)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 204,
+      "label": "Attempt 8 By",
+      "manifest_label": "Attempt 8 By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 205,
+      "label": "Attempt 8 HuB Name",
+      "manifest_label": "Attempt 8 HuB Name",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 206,
+      "label": "Attempt 8 Date",
+      "manifest_label": "Attempt 8 Date",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 207,
+      "label": "Exception 8 Fake Attempt",
+      "manifest_label": "Exception 8 Fake Attempt",
+      "provisional_type": "boolean",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 208,
+      "label": "Exception 8 Reason",
+      "manifest_label": "Exception 8 Reason",
+      "provisional_type": "text",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 209,
+      "label": "Exception 8 time",
+      "manifest_label": "Exception 8 time",
+      "provisional_type": "dateTime",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 210,
+      "label": "Exception 8 lat/long",
+      "manifest_label": "Exception 8 lat/long",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    },
+    {
+      "column": 211,
+      "label": "Auto Delivered By",
+      "manifest_label": "Auto Delivered By",
+      "provisional_type": "string(191)",
+      "nonempty_values": 0,
+      "parsed_value_types": {}
+    }
+  ]
+}

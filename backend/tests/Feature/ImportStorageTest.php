@@ -83,13 +83,35 @@ class ImportStorageTest extends TestCase
         $runId = $start->json('data.run_id');
         $sheetId = $start->json('data.sheet_ids.0');
 
+        $resume = $this->post('/api/organizations/'.$organizationSlug.'/imports', [
+            'file' => UploadedFile::fake()->createWithContent('synthetic-bosta.xlsx', $workbookBytes)
+                ->mimeType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            'report_date' => '2026-11-02',
+            'manual_date' => '0',
+            'sheets' => json_encode([[
+                'index' => 0,
+                'name' => 'Deliveries',
+                'header_row_number' => 1,
+                'headers' => $headers,
+            ]], JSON_THROW_ON_ERROR),
+            'column_overrides' => '{}',
+        ]);
+        $resume->assertOk()->assertJsonPath('data.already_imported', false)
+            ->assertJsonPath('data.resumed', true)->assertJsonPath('data.run_id', $runId)
+            ->assertJsonPath('data.sheet_ids.0', $sheetId);
+
         $this->assertDatabaseHas('import_file_contents', [
             'organization_id' => $organizationId,
             'import_file_id' => $fileId,
             'import_run_id' => $runId,
             'sha256' => hash('sha256', $workbookBytes),
         ]);
-        self::assertSame($workbookBytes, DB::table('import_file_contents')->where('import_run_id', $runId)->value('contents'));
+        self::assertNull(DB::table('import_file_contents')->where('import_run_id', $runId)->value('contents'));
+        self::assertSame(
+            $workbookBytes,
+            DB::table('import_file_content_chunks')->where('import_file_content_id', DB::table('import_file_contents')->where('import_run_id', $runId)->value('id'))
+                ->orderBy('chunk_index')->pluck('contents')->implode(''),
+        );
 
         $chunk = [
             'chunk_index' => 0,
@@ -129,5 +151,40 @@ class ImportStorageTest extends TestCase
             'sheets' => json_encode([['index' => 0, 'name' => 'Deliveries', 'headers' => $headers]], JSON_THROW_ON_ERROR),
         ]);
         $retry->assertOk()->assertJsonPath('data.already_imported', true)->assertJsonPath('data.file_id', $fileId);
+
+        $csvBytes = "Tracking Number,Items\r\nTRACK-CSV-TEST-0001,2\r\n";
+        $csvStart = $this->post('/api/organizations/'.$organizationSlug.'/imports', [
+            'file' => UploadedFile::fake()->createWithContent('synthetic-bosta.csv', $csvBytes)
+                ->mimeType('text/csv'),
+            'report_date' => '2026-11-02',
+            'manual_date' => '0',
+            'sheets' => json_encode([[
+                'index' => 0,
+                'name' => 'Deliveries',
+                'header_row_number' => 1,
+                'headers' => ['Tracking Number', 'Items'],
+            ]], JSON_THROW_ON_ERROR),
+        ]);
+        $csvStart->assertOk()->assertJsonPath('data.already_imported', false);
+        $csvContentId = DB::table('import_file_contents')->where('import_run_id', $csvStart->json('data.run_id'))->value('id');
+        self::assertSame(
+            $csvBytes,
+            DB::table('import_file_content_chunks')->where('import_file_content_id', $csvContentId)
+                ->orderBy('chunk_index')->pluck('contents')->implode(''),
+        );
+
+        $mislabelledWorkbook = $this->post('/api/organizations/'.$organizationSlug.'/imports', [
+            'file' => UploadedFile::fake()->createWithContent('synthetic-openxml.csv', $workbookBytes)
+                ->mimeType('application/zip'),
+            'report_date' => '2026-11-02',
+            'manual_date' => '0',
+            'sheets' => json_encode([[
+                'index' => 0,
+                'name' => 'Deliveries',
+                'header_row_number' => 1,
+                'headers' => ['Tracking Number'],
+            ]], JSON_THROW_ON_ERROR),
+        ]);
+        $mislabelledWorkbook->assertOk()->assertJsonPath('data.already_imported', false);
     }
 }

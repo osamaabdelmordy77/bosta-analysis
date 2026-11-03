@@ -31,17 +31,20 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const handleFilesAdded = async (rawFiles: FileList | File[]) => {
-    const fileArray = Array.from(rawFiles).filter((f) =>
-      /\.(xlsx|xls)$/i.test(f.name)
-    );
+    const fileArray = Array.from(rawFiles).filter((f) => /\.(xlsx|xls|csv)$/i.test(f.name));
 
-    if (fileArray.length === 0) return;
+    if (fileArray.length === 0) {
+      setProcessingError('Choose an Excel workbook (.xlsx, .xls) or CSV file (.csv).');
+      return;
+    }
 
+    setProcessingError(null);
     const newPending: PendingFile[] = await Promise.all(fileArray.map(async (file) => {
       const detectedFromFilename = extractDateFromFilename(file.name);
       let detectedFromSheet: string | null = null;
@@ -82,12 +85,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const handleStartProcessing = async () => {
     if (pendingFiles.length === 0 || isProcessing) return;
     setIsProcessing(true);
+    setProcessingError(null);
     try {
       await onProcessFiles(pendingFiles);
       setPendingFiles([]);
       onClose();
     } catch (err) {
       console.error(err);
+      setProcessingError(err instanceof Error ? err.message : 'The import could not be completed.');
     } finally {
       setIsProcessing(false);
     }
@@ -151,7 +156,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               type="file"
               ref={fileInputRef}
               multiple
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files) handleFilesAdded(e.target.files);
@@ -160,7 +165,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             />
             <FileSpreadsheet className="w-10 h-10 text-sky-400 mx-auto mb-3" />
             <h4 className="text-base font-semibold text-white mb-1">
-              Select or Drag &amp; Drop Excel Files (.xlsx, .xls)
+              Select or Drag &amp; Drop Excel (.xlsx, .xls) or CSV (.csv) Files
             </h4>
             <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
               Select multiple files simultaneously. Shipment date is extracted from the filename or worksheet name
@@ -247,6 +252,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+          {processingError && (
+            <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="whitespace-pre-wrap">{processingError}</span>
             </div>
           )}
         </div>

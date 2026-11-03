@@ -265,16 +265,19 @@ export default function App() {
           for (const sheet of parsed.sourceSheets) {
             const sheetId = started.sheetIds[sheet.index];
             if (!sheetId) throw new Error(`The server did not register worksheet ${sheet.name}.`);
-            for (let offset = 0; offset < sheet.rows.length; offset += 200) {
+            let chunkIndex = 0;
+            while (sheet.rows.length > 0) {
+              const rows = sheet.rows.splice(0, 200);
               await uploadWorkbookRows(
                 activeOrganization.slug,
                 started.fileId,
                 started.runId,
                 sheetId,
-                Math.floor(offset / 200),
-                sheet.rows.slice(offset, offset + 200),
+                chunkIndex,
+                rows,
                 columnOverrides as Record<string, string>,
               );
+              chunkIndex++;
             }
           }
           await publishWorkbookImport(activeOrganization.slug, started.fileId, started.runId);
@@ -286,7 +289,8 @@ export default function App() {
     }
 
     if (processingErrors.length > 0) {
-      alert(`Could not process the following files:\n${processingErrors.join('\n')}`);
+      await reloadOrganizationData(activeOrganization.slug);
+      throw new Error(`Could not process the following files:\n${processingErrors.join('\n')}`);
     }
 
     await reloadOrganizationData(activeOrganization.slug);
