@@ -8,6 +8,8 @@ export interface UploadedFile {
   uploadedAt: number;
   duplicateCount: number;
   sheetsCount?: number;
+    rejectedCount?: number;
+    source?: 'mysql' | 'legacy-migrated';
 }
 
 export interface ShipmentRecord {
@@ -28,6 +30,8 @@ export interface ShipmentRecord {
   assignedHub: string | null;
   hubs: Record<string, string | null>;
   rawDate?: string | null;
+  sourceSheetIndex?: number;
+  sourceRowNumber?: number;
 }
 
 export interface ColumnMapping {

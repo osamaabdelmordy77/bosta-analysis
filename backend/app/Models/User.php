@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Security\SystemAdministratorService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -56,5 +57,10 @@ class User extends Authenticatable
     public function accessibleHubs(): BelongsToMany
     {
         return $this->belongsToMany(Hub::class, 'user_hub_access')->withPivot('organization_id')->withTimestamps();
+    }
+
+    public function isSystemAdministrator(): bool
+    {
+        return app(SystemAdministratorService::class)->isActive((int) $this->id);
     }
 }

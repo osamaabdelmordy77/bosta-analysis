@@ -14,6 +14,7 @@ class ImportRun extends TenantModel
     {
         return [
             'report_date' => 'date',
+            'report_date_is_manual' => 'boolean',
             'revision' => 'integer',
             'mapping_version' => 'integer',
             'source_rows_count' => 'integer',

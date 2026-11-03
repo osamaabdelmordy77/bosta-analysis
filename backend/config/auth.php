@@ -114,4 +114,11 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'dummy_password_hash' => env(
+        'AUTH_DUMMY_PASSWORD_HASH',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.'
+    ),
+
+    'session_reference_key' => env('SESSION_REFERENCE_KEY'),
+
 ];

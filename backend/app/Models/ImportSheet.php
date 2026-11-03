@@ -13,6 +13,7 @@ class ImportSheet extends TenantModel
     protected function casts(): array
     {
         return [
+            'source_headers' => 'array',
             'source_sheet_index' => 'integer',
             'header_row_number' => 'integer',
             'data_rows_count' => 'integer',

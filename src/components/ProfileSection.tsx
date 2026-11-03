@@ -120,8 +120,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
               Total active shipments in memory: <b>{totalShipments.toLocaleString()}</b>
             </li>
             <li>
-              Duplicate tracking numbers within identical daily files removed:{' '}
-              <b>{totalDuplicatesRemoved.toLocaleString()}</b> (first occurrence kept)
+              Duplicate tracking numbers in daily imports preserved and marked:{' '}
+              <b>{totalDuplicatesRemoved.toLocaleString()}</b> (source rows remain in MySQL history)
             </li>
             <li>
               Shipment Date source: <b>Filenames</b> (e.g. <code>Shipment_2026-07-01.xlsx</code>)
@@ -129,7 +129,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
             <li>
               Cross-day tracking numbers: Preserved under their respective daily dates for day-to-day operational analysis.
             </li>
-            <li>Browser storage: Local IndexedDB (data stays 100% private on your machine).</li>
+            <li>Database storage: MySQL tenant database; original workbook files and source rows are retained.</li>
           </ul>
         </div>
 

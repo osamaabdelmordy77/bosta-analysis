@@ -11,18 +11,28 @@ import {
   ColumnMapping,
 } from './types';
 import { setupChartJS } from './utils/chartSetup';
-import {
-  getStoredFiles,
-  getAllStoredShipments,
-  syncStoredShipmentDates,
-  saveFileWithShipments,
-  deleteStoredFile,
-  updateStoredFileDate,
-  clearAllStoredData,
-  saveSetting,
-  getSetting,
-} from './services/db';
 import { processExcelFile } from './services/excelService';
+import { BackendConnectionStatus, checkBackendConnection } from './services/backend';
+import {
+  archiveAllImports,
+  archiveImport,
+  AuthUser,
+  ApiError,
+  getAllShipments,
+  getCurrentUser,
+  getImportFiles,
+  getOrganizationSettings,
+  getOrganizations,
+  login,
+  logout,
+  OrganizationOption,
+  publishWorkbookImport,
+  saveOrganizationSetting,
+  startWorkbookImport,
+  updateImportDate,
+  uploadWorkbookRows,
+} from './services/api';
+import { migrateAndRemoveLegacyIndexedDb } from './services/legacyIndexedDbMigration';
 import { filterShipments, computeAggregations } from './utils/analytics';
 
 // Components
@@ -39,6 +49,7 @@ import { ProfileSection } from './components/ProfileSection';
 import { UploadModal, PendingFile } from './components/UploadModal';
 import { FileManagerModal } from './components/FileManagerModal';
 import { DuplicateExplainerModal } from './components/DuplicateExplainerModal';
+import { LoginPanel } from './components/LoginPanel';
 
 import { Upload, FileSpreadsheet, AlertTriangle, Loader2 } from 'lucide-react';
 
@@ -63,6 +74,15 @@ export default function App() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [shipments, setShipments] = useState<ShipmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [backendStatus, setBackendStatus] = useState<BackendConnectionStatus | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
+  const [activeOrganization, setActiveOrganization] = useState<OrganizationOption | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
 
   // Modals state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -79,52 +99,129 @@ export default function App() {
   const [allHeaders, setAllHeaders] = useState<string[]>([]);
   const [hubLabels, setHubLabels] = useState<string[]>([]);
 
-  // Initial load from IndexedDB
   useEffect(() => {
-    async function loadData() {
+    if (!import.meta.env.DEV) return;
+
+    const controller = new AbortController();
+    setBackendStatus('checking');
+    checkBackendConnection(controller.signal)
+      .then(() => setBackendStatus('connected'))
+      .catch(() => {
+        if (!controller.signal.aborted) setBackendStatus('unavailable');
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  // Restore the authenticated server session.
+  useEffect(() => {
+    let active = true;
+    async function restoreSession() {
       try {
-        const [storedFiles, loadedShipments, savedHubBasis, savedOverrides] = await Promise.all([
-          getStoredFiles(),
-          getAllStoredShipments(),
-          getSetting<string>('hubBasis'),
-          getSetting<Partial<ColumnMapping>>('columnOverrides'),
-        ]);
-        const storedShipments = await syncStoredShipmentDates(
-          new Map(storedFiles.map((file) => [file.id, file.detectedDate])),
-          loadedShipments
-        );
-
-        setFiles(storedFiles);
-        setShipments(storedShipments);
-
-        if (savedHubBasis) setHubBasis(savedHubBasis);
-        if (savedOverrides) setColumnOverrides(savedOverrides);
-
-        // Collect all distinct hub labels and headers
-        const hubsSet = new Set<string>();
-        storedShipments.forEach((s) => {
-          Object.keys(s.hubs || {}).forEach((k) => hubsSet.add(k));
-        });
-        const hList = Array.from(hubsSet);
-        setHubLabels(hList);
-        if (!savedHubBasis && hList.length > 0) {
-          const pref = hList.find((l) => /assigned/i.test(l)) || hList[0];
-          setHubBasis(pref);
-        }
+        const user = await getCurrentUser();
+        const orgs = await getOrganizations();
+        if (!active) return;
+        setCurrentUser(user);
+        setOrganizations(orgs);
+        setActiveOrganization(orgs[0] || null);
       } catch (err) {
-        console.error('Failed to load from IndexedDB:', err);
+        if (active) {
+          setCurrentUser(null);
+          setOrganizations([]);
+          setActiveOrganization(null);
+          if (!(err instanceof ApiError && err.status === 401)) {
+            setLoadError('Could not connect to the Laravel API. Confirm the backend is running, then reload this page.');
+          }
+        }
       } finally {
-        setIsLoading(false);
+        if (active) {
+          setAuthChecked(true);
+          setIsLoading(false);
+        }
       }
     }
-    loadData();
+    restoreSession();
+    return () => { active = false; };
   }, []);
+
+  const reloadOrganizationData = useCallback(async (organizationSlug: string) => {
+    const [importData, serverShipments, settings] = await Promise.all([
+      getImportFiles(organizationSlug),
+      getAllShipments(organizationSlug),
+      getOrganizationSettings(organizationSlug),
+    ]);
+    setFiles(importData.files);
+    setShipments(serverShipments);
+    setAllHeaders(importData.headers);
+    setHubLabels(importData.hubLabels);
+    setHubBasis(settings.hubBasis || importData.hubLabels.find((label) => /assigned/i.test(label)) || importData.hubLabels[0] || 'Assigned Hub');
+    setColumnOverrides((settings.columnOverrides || {}) as Partial<ColumnMapping>);
+  }, []);
+
+  // Import legacy browser records to MySQL and delete the old database only after count verification.
+  useEffect(() => {
+    if (!activeOrganization) return;
+    let active = true;
+    async function loadServerData() {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const migration = await migrateAndRemoveLegacyIndexedDb(activeOrganization!.slug, (message) => {
+          if (active) setMigrationMessage(message);
+        });
+        if (!active) return;
+        setMigrationMessage(migration.found
+          ? [
+              `Moved ${migration.records.toLocaleString()} legacy shipment summaries from ${migration.files.toLocaleString()} old browser files into MySQL.`,
+              ...(migration.warnings || []),
+            ].join(' ')
+          : null);
+        await reloadOrganizationData(activeOrganization!.slug);
+      } catch (err) {
+        if (active) setLoadError(err instanceof Error ? err.message : 'Could not load MySQL data.');
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+    loadServerData();
+    return () => { active = false; };
+  }, [activeOrganization, reloadOrganizationData]);
+
+  const handleLogin = async (email: string, password: string) => {
+    setAuthSubmitting(true);
+    setAuthError(null);
+    setLoadError(null);
+    try {
+      const user = await login(email, password);
+      const orgs = await getOrganizations();
+      setCurrentUser(user);
+      setOrganizations(orgs);
+      setActiveOrganization(orgs[0] || null);
+      if (orgs.length === 0) setAuthError('This account has no active organization membership.');
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Sign in failed.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try { await logout(); } catch { /* Clear the local view even if the session has already expired. */ }
+    setCurrentUser(null);
+    setOrganizations([]);
+    setActiveOrganization(null);
+    setFiles([]);
+    setShipments([]);
+    setFilters(DEFAULT_FILTERS);
+    setAuthError(null);
+    setLoadError(null);
+  };
 
   // Update hub basis setting
   const handleHubBasisChange = useCallback(async (newBasis: string) => {
     setHubBasis(newBasis);
-    await saveSetting('hubBasis', newBasis);
-  }, []);
+    if (activeOrganization) await saveOrganizationSetting(activeOrganization.slug, 'hubBasis', newBasis);
+  }, [activeOrganization]);
 
   // Column override change
   const handleColumnOverrideChange = useCallback(
@@ -138,80 +235,52 @@ export default function App() {
   );
 
   const handleApplyMapping = useCallback(async () => {
-    await saveSetting('columnOverrides', columnOverrides);
+    if (!activeOrganization) return;
+    await saveOrganizationSetting(activeOrganization.slug, 'columnOverrides', columnOverrides);
     alert('Column mappings updated. New files will use these settings.');
-  }, [columnOverrides]);
+  }, [activeOrganization, columnOverrides]);
 
   // Process and ingest uploaded files
   const handleProcessFiles = async (pending: PendingFile[]) => {
-    const updatedFiles = [...files];
-    const newHubsSet = new Set(hubLabels);
-    const newHeadersSet = new Set(allHeaders);
-    const parsedFiles: Array<{
-      pendingFile: PendingFile;
-      parsed: Awaited<ReturnType<typeof processExcelFile>>;
-    } | null> = Array(pending.length).fill(null);
+    if (!activeOrganization) throw new Error('Select an organization before importing workbooks.');
     const processingErrors: string[] = [];
-    let nextIndex = 0;
-
-    const processNextFile = async () => {
-      while (true) {
-        const index = nextIndex++;
-        if (index >= pending.length) return;
-        const pendingFile = pending[index];
-
-        try {
-          const parsed = await processExcelFile({
-            file: pendingFile.file,
-            fileId: pendingFile.name,
-            shipmentDate: pendingFile.detectedDate,
-            overrides: columnOverrides as Record<string, string>,
-          });
-          parsedFiles[index] = { pendingFile, parsed };
-        } catch (err) {
-          console.error(`Failed parsing file ${pendingFile.name}:`, err);
-          processingErrors.push(`${pendingFile.name}: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
-    };
-
-    await Promise.all(
-      Array.from({ length: Math.min(3, pending.length) }, () => processNextFile())
-    );
-
-    for (const result of parsedFiles) {
-      if (!result) continue;
-      const { pendingFile: p, parsed } = result;
-
+    for (const p of pending) {
       try {
+        const parsed = await processExcelFile({
+          file: p.file,
+          fileId: p.name,
+          shipmentDate: p.detectedDate,
+          overrides: columnOverrides as Record<string, string>,
+        });
+        const started = await startWorkbookImport(
+          activeOrganization.slug,
+          p.file,
+          p.detectedDate,
+          p.isManualDate,
+          parsed,
+          columnOverrides as Record<string, string>,
+        );
 
-        const fileMeta: UploadedFile = {
-          id: p.name,
-          name: p.name,
-          size: p.file.size,
-          detectedDate: p.detectedDate,
-          manualDate: p.isManualDate,
-          recordCount: parsed.records.length,
-          duplicateCount: parsed.stats.duplicatesRemoved,
-          uploadedAt: Date.now(),
-          sheetsCount: parsed.stats.sheetsCount,
-        };
-
-        // Save file & records to IndexedDB
-        await saveFileWithShipments(fileMeta, parsed.records);
-
-        // Update local arrays
-        const existingIdx = updatedFiles.findIndex((f) => f.name === p.name);
-        if (existingIdx >= 0) {
-          updatedFiles[existingIdx] = fileMeta;
-        } else {
-          updatedFiles.unshift(fileMeta);
+        if (!started.alreadyImported) {
+          for (const sheet of parsed.sourceSheets) {
+            const sheetId = started.sheetIds[sheet.index];
+            if (!sheetId) throw new Error(`The server did not register worksheet ${sheet.name}.`);
+            for (let offset = 0; offset < sheet.rows.length; offset += 200) {
+              await uploadWorkbookRows(
+                activeOrganization.slug,
+                started.fileId,
+                started.runId,
+                sheetId,
+                Math.floor(offset / 200),
+                sheet.rows.slice(offset, offset + 200),
+                columnOverrides as Record<string, string>,
+              );
+            }
+          }
+          await publishWorkbookImport(activeOrganization.slug, started.fileId, started.runId);
         }
-
-        parsed.hubLabels.forEach((l) => newHubsSet.add(l));
-        parsed.allHeaders.forEach((h) => newHeadersSet.add(h));
       } catch (err) {
-        console.error(`Failed saving file ${p.name}:`, err);
+        console.error(`Failed importing file ${p.name}:`, err);
         processingErrors.push(`${p.name}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
@@ -220,48 +289,30 @@ export default function App() {
       alert(`Could not process the following files:\n${processingErrors.join('\n')}`);
     }
 
-    // Reload all records from IndexedDB to guarantee pristine state
-    const refreshedShipments = await getAllStoredShipments();
-    setFiles(updatedFiles);
-    setShipments(refreshedShipments);
-
-    const hList = Array.from(newHubsSet);
-    setHubLabels(hList);
-    setAllHeaders(Array.from(newHeadersSet));
-
-    if (!hubBasis && hList.length > 0) {
-      const pref = hList.find((l) => /assigned/i.test(l)) || hList[0];
-      setHubBasis(pref);
-    }
+    await reloadOrganizationData(activeOrganization.slug);
   };
 
   // Delete a specific file
   const handleDeleteFile = async (fileId: string) => {
-    if (!confirm('Are you sure you want to remove this file and all its records?')) return;
-    await deleteStoredFile(fileId);
-    const refreshedFiles = await getStoredFiles();
-    const refreshedShipments = await getAllStoredShipments();
-    setFiles(refreshedFiles);
-    setShipments(refreshedShipments);
+    if (!activeOrganization || !confirm('Archive this file from the active dashboard? Its MySQL history will be preserved.')) return;
+    await archiveImport(activeOrganization.slug, fileId);
+    await reloadOrganizationData(activeOrganization.slug);
   };
 
   // Update a file's assigned date
   const handleUpdateFileDate = async (fileId: string, newDate: string) => {
-    await updateStoredFileDate(fileId, newDate);
-    const refreshedFiles = await getStoredFiles();
-    const refreshedShipments = await getAllStoredShipments();
-    setFiles(refreshedFiles);
-    setShipments(refreshedShipments);
+    if (!activeOrganization) return;
+    await updateImportDate(activeOrganization.slug, fileId, newDate);
+    await reloadOrganizationData(activeOrganization.slug);
   };
 
   // Clear all stored data
   const handleClearAll = async () => {
-    if (!confirm('Are you sure you want to clear ALL uploaded data? This action cannot be undone.')) {
+    if (!activeOrganization || !confirm('Archive every upload from the active dashboard? Imported MySQL history will remain available for audit.')) {
       return;
     }
-    await clearAllStoredData();
-    setFiles([]);
-    setShipments([]);
+    await archiveAllImports(activeOrganization.slug);
+    await reloadOrganizationData(activeOrganization.slug);
     setFilters(DEFAULT_FILTERS);
     setIsClearConfirmOpen(false);
   };
@@ -372,14 +423,31 @@ export default function App() {
 
   const existingFilenames = useMemo(() => new Set(files.map((f) => f.name)), [files]);
 
-  if (isLoading) {
+  if (!authChecked || isLoading) {
     return (
       <div className="fixed inset-0 bg-[#050a18cc] grid place-items-center z-50">
         <div className="bg-[#111a33] border border-[#1d2a4d] p-6 rounded-xl flex items-center gap-3 text-slate-200">
           <Loader2 className="w-5 h-5 animate-spin text-sky-400" />
-          <span>Restoring local logistics data from IndexedDB…</span>
+          <div>
+            <span>Connecting to MySQL and loading workspace data…</span>
+            {migrationMessage && <p className="mt-2 text-xs text-slate-400">{migrationMessage}</p>}
+          </div>
         </div>
       </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginPanel error={authError || loadError} isLoading={authSubmitting} onLogin={handleLogin} />;
+  }
+
+  if (!activeOrganization) {
+    return (
+      <LoginPanel
+        error="This account has no active organization membership. Ask an organization administrator to grant access."
+        isLoading={false}
+        onLogin={handleLogin}
+      />
     );
   }
 
@@ -390,11 +458,23 @@ export default function App() {
         files={files}
         totalShipments={shipments.length}
         filteredShipments={filteredShipments.length}
+        backendStatus={backendStatus}
+        currentUser={currentUser}
+        organizations={organizations}
+        activeOrganization={activeOrganization}
+        onOrganizationChange={(slug) => setActiveOrganization(organizations.find((org) => org.slug === slug) || null)}
+        onLogout={handleLogout}
         onOpenUpload={() => setIsUploadOpen(true)}
         onOpenFileManager={() => setIsFileManagerOpen(true)}
         onOpenDuplicateInfo={() => setIsDuplicateInfoOpen(true)}
         onClearAll={() => setIsClearConfirmOpen(true)}
       />
+
+      {(loadError || migrationMessage) && (
+        <div className={`mx-auto mt-3 max-w-7xl rounded-lg border px-4 py-3 text-sm ${loadError ? 'border-rose-500/40 bg-rose-500/10 text-rose-200' : 'border-sky-500/40 bg-sky-500/10 text-sky-100'}`} role={loadError ? 'alert' : 'status'}>
+          {loadError || migrationMessage}
+        </div>
+      )}
 
       {/* When no files are uploaded, show the welcoming Drop zone */}
       {files.length === 0 ? (
@@ -405,7 +485,7 @@ export default function App() {
             Drag &amp; drop one daily report, multiple daily files, or an entire month&apos;s data at once (
             <b>.xlsx</b> or <b>.xls</b>). Dates are automatically extracted from filenames (e.g.{' '}
             <code>Shipment_2026-07-01.xlsx</code>). All files are processed via Web Workers and stored securely
-            in your browser&apos;s IndexedDB — no company data is ever sent to external servers.
+            in this organization&apos;s MySQL database, including the original workbook and its source rows.
           </p>
           <button
             type="button"
@@ -568,8 +648,8 @@ export default function App() {
             </div>
             <div className="modal-body text-xs text-slate-300">
               <p>
-                This will delete all uploaded daily Excel reports and clear your browser&apos;s IndexedDB
-                database. You will need to re-upload your Excel workbooks to analyze them again.
+                This archives every uploaded report from the active dashboard. Original workbooks, imported rows,
+                and audit history remain preserved in MySQL.
               </p>
             </div>
             <div className="modal-footer">

@@ -215,7 +215,7 @@ class DataIntegrityTest extends TestCase
         ]);
     }
 
-    public function test_idempotency_keys_allow_repeated_tracking_but_reject_replayed_source_rows(): void
+    public function test_idempotency_rejects_replayed_rows_and_duplicate_snapshots_but_preserves_source_rows(): void
     {
         $duplicateRow = $this->sourceRow;
         $duplicateRow['id'] = (string) Str::ulid();
@@ -230,11 +230,13 @@ class DataIntegrityTest extends TestCase
         $secondRow = $this->sourceRow;
         $secondRow['id'] = (string) Str::ulid();
         $secondRow['source_row_number'] = 3;
+        $secondRow['status'] = 'duplicate';
         DB::table('import_source_rows')->insert($secondRow);
-        $secondSnapshotId = $this->createSnapshot($secondRow['id'], $this->shipmentId, '00001234');
+        self::assertSame(2, DB::table('import_source_rows')->where('import_run_id', $this->runId)->count());
+        self::assertSame(1, DB::table('shipment_snapshots')->where('shipment_id', $this->shipmentId)->count());
 
-        self::assertSame(2, DB::table('shipment_snapshots')->where('shipment_id', $this->shipmentId)->count());
-        self::assertSame('00001234', DB::table('shipment_snapshots')->where('id', $secondSnapshotId)->value('tracking_number'));
+        $this->expectException(QueryException::class);
+        $this->createSnapshot($secondRow['id'], $this->shipmentId, '00001234');
     }
 
     public function test_incomplete_or_inactive_runs_are_not_visible_in_the_official_report_view(): void

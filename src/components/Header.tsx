@@ -1,11 +1,19 @@
 import React from 'react';
 import { UploadedFile } from '../types';
 import { Upload, FolderKanban, ShieldCheck, Trash2 } from 'lucide-react';
+import { BackendConnectionStatus } from '../services/backend';
+import { AuthUser, OrganizationOption } from '../services/api';
 
 interface HeaderProps {
   files: UploadedFile[];
   totalShipments: number;
   filteredShipments: number;
+  backendStatus: BackendConnectionStatus | null;
+  currentUser: AuthUser;
+  organizations: OrganizationOption[];
+  activeOrganization: OrganizationOption;
+  onOrganizationChange: (slug: string) => void;
+  onLogout: () => void;
   onOpenUpload: () => void;
   onOpenFileManager: () => void;
   onOpenDuplicateInfo: () => void;
@@ -16,6 +24,12 @@ export const Header: React.FC<HeaderProps> = ({
   files,
   totalShipments,
   filteredShipments,
+  backendStatus,
+  currentUser,
+  organizations,
+  activeOrganization,
+  onOrganizationChange,
+  onLogout,
   onOpenUpload,
   onOpenFileManager,
   onOpenDuplicateInfo,
@@ -56,6 +70,32 @@ export const Header: React.FC<HeaderProps> = ({
           shipments
         </div>
       )}
+
+      {backendStatus && (
+        <div className="chip" role="status" aria-live="polite" title="Laravel API health through the Vite development proxy">
+          <span>Backend</span>
+          <b>{backendStatus === 'checking' ? 'Checking…' : backendStatus === 'connected' ? 'Connected' : 'Unavailable'}</b>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        {organizations.length > 1 && (
+          <select
+            aria-label="Organization"
+            value={activeOrganization.slug}
+            onChange={(event) => onOrganizationChange(event.target.value)}
+            className="rounded-lg border border-[#2c3e6b] bg-[#080f25] px-2 py-2 text-sm text-slate-200"
+          >
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.slug}>{organization.name}</option>
+            ))}
+          </select>
+        )}
+        <span className="hidden text-xs text-slate-400 sm:inline" title={currentUser.email}>
+          {currentUser.name}
+        </span>
+        <button type="button" className="btn sm" onClick={onLogout}>Sign out</button>
+      </div>
 
       <div className="flex items-center gap-2">
         <button

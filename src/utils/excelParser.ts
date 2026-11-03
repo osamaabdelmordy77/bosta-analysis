@@ -154,6 +154,13 @@ export interface ParseResult {
   fileName: string;
   shipmentDate: string;
   records: ShipmentRecord[];
+  sourceSheets: Array<{
+    index: number;
+    name: string;
+    headerRowNumber: number;
+    headers: string[];
+    rows: Array<{ sourceRowNumber: number; values: unknown[]; dashboardRecord?: ShipmentRecord }>;
+  }>;
   hubLabels: string[];
   allHeaders: string[];
   stats: {
@@ -177,13 +184,19 @@ export function parseExcelBuffer(
   const [y, m, d] = shipmentDate.split('-');
   const dateMs = Date.UTC(+y, +m - 1, +d);
 
-  const sheetsData = wb.SheetNames.map((name) => {
+  const sheetsData = wb.SheetNames.map((name, sheetIndex) => {
     const ws = wb.Sheets[name];
     const aoa: unknown[][] = XLSX.utils.sheet_to_json(ws, {
       header: 1,
       raw: true,
       defval: null,
       blankrows: false
+    });
+    const sourceAoa: unknown[][] = XLSX.utils.sheet_to_json(ws, {
+      header: 1,
+      raw: true,
+      defval: null,
+      blankrows: true,
     });
 
     // Find header row (within top 15 rows, the one with the most filled strings)
@@ -207,7 +220,38 @@ export function parseExcelBuffer(
     }
 
     const det = detectSheetColumns(headers, rows);
-    return { name, headers, hnorm: headers.map(norm), rows, det };
+
+    let sourceHeaderIndex = 0;
+    let sourceHeaderScore = -1;
+    for (let i = 0; i < Math.min(15, sourceAoa.length); i++) {
+      const count = (sourceAoa[i] || []).filter((value) => typeof value === 'string' && value.trim() !== '').length;
+      if (count > sourceHeaderScore) {
+        sourceHeaderScore = count;
+        sourceHeaderIndex = i;
+      }
+    }
+
+    const sourceHeader = (sourceAoa[sourceHeaderIndex] || []) as unknown[];
+    const sourceColumnCount = Math.max(sourceHeader.length, ...sourceAoa.slice(sourceHeaderIndex + 1, sourceHeaderIndex + 51).map((row) => row.length), 0);
+    const sourceHeaders = Array.from({ length: sourceColumnCount }, (_, index) => {
+      const header = sourceHeader[index];
+      return header != null && String(header).trim() !== '' ? String(header).trim() : `Column ${index + 1}`;
+    });
+    const sourceRows = sourceAoa.slice(sourceHeaderIndex + 1)
+      .map((values, index) => ({ sourceRowNumber: sourceHeaderIndex + index + 2, values }))
+      .filter(({ values }) => values.some((value) => value != null && value !== ''));
+
+    return {
+      index: sheetIndex,
+      name,
+      headers,
+      hnorm: headers.map(norm),
+      rows,
+      det,
+      sourceHeaderRowNumber: sourceHeaderIndex + 1,
+      sourceHeaders,
+      sourceRows,
+    };
   });
 
   // Pick sheets with tracking or score >= 3
@@ -317,6 +361,7 @@ export function parseExcelBuffer(
         assignedHubVal = Object.values(recordHubs).find((v) => v != null) || null;
       }
 
+      const sourceRowNumber = sh.sourceRows[rIdx]?.sourceRowNumber;
       const rec: ShipmentRecord = {
         id: `${fileId}_${trackingStr}`,
         fileId,
@@ -334,6 +379,8 @@ export function parseExcelBuffer(
         pickupZone: pzi >= 0 ? cleanValue(row[pzi]) : null,
         assignedHub: assignedHubVal,
         hubs: recordHubs,
+        sourceSheetIndex: sh.index,
+        sourceRowNumber,
       };
 
       records.push(rec);
@@ -345,6 +392,24 @@ export function parseExcelBuffer(
     fileName,
     shipmentDate,
     records,
+    sourceSheets: sheetsData.map((sheet) => {
+      const recordsByRow = new Map(
+        records
+          .filter((record) => record.sourceSheetIndex === sheet.index && record.sourceRowNumber !== undefined)
+          .map((record) => [record.sourceRowNumber as number, record])
+      );
+
+      return {
+        index: sheet.index,
+        name: sheet.name,
+        headerRowNumber: sheet.sourceHeaderRowNumber,
+        headers: sheet.sourceHeaders,
+        rows: sheet.sourceRows.map((sourceRow) => ({
+          ...sourceRow,
+          dashboardRecord: recordsByRow.get(sourceRow.sourceRowNumber),
+        })),
+      };
+    }),
     hubLabels,
     allHeaders,
     stats: {

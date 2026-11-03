@@ -64,7 +64,7 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
             <div>
               <h3>Uploaded Daily Shipment Files</h3>
               <p className="text-xs text-slate-400 m-0">
-                {files.length} file{files.length === 1 ? '' : 's'} stored in local browser IndexedDB ·{' '}
+                {files.length} file{files.length === 1 ? '' : 's'} stored in MySQL ·{' '}
                 {totalRecords.toLocaleString()} total shipments
               </p>
             </div>
@@ -86,7 +86,7 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
               <b className="text-lg text-white font-bold">{totalRecords.toLocaleString()}</b>
             </div>
             <div className="p-3 bg-[#0a1330] border border-[#1d2a4d] rounded-lg">
-              <small className="text-slate-400 text-xs block">Intra-File Duplicates Filtered</small>
+              <small className="text-slate-400 text-xs block">Duplicate Rows Marked</small>
               <b className="text-lg text-white font-bold">{totalDuplicates.toLocaleString()}</b>
             </div>
           </div>

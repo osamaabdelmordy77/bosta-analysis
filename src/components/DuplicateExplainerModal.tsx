@@ -39,7 +39,7 @@ export const DuplicateExplainerModal: React.FC<DuplicateExplainerModalProps> = (
               <span className="text-sm">1. Duplicate File Uploads (File Re-Ingestion)</span>
             </div>
             <p className="text-slate-300 m-0">
-              When an Excel file with the same filename or ID is uploaded again (e.g. you re-upload <code>Shipment_2026-07-01.xlsx</code> with updated columns), the system updates that file&apos;s records in IndexedDB instead of duplicating them. Previous entries for that file are cleanly replaced, preventing double-counting.
+              When an Excel file with the same filename is uploaded again, MySQL creates a new import revision. The previous revision remains in history while the selected revision is shown in the active dashboard.
             </p>
           </div>
 
@@ -49,7 +49,7 @@ export const DuplicateExplainerModal: React.FC<DuplicateExplainerModalProps> = (
               <span className="text-sm">2. Duplicate Shipments Within the Same Daily File</span>
             </div>
             <p className="text-slate-300 m-0">
-              Tracking Number is the primary shipment identifier. If the same tracking number appears multiple times in a single day&apos;s report, the first occurrence is ingested and duplicate rows are filtered out. The system logs the number of filtered duplicates in the file profile.
+              Tracking Number identifies a shipment across its history. Duplicate rows in one import run are marked and preserved in the source-row history while only one shipment snapshot is counted in that run.
             </p>
           </div>
 
@@ -68,8 +68,8 @@ export const DuplicateExplainerModal: React.FC<DuplicateExplainerModalProps> = (
             <ul className="list-disc pl-4 space-y-1 text-slate-300">
               <li>No duplicate counts if the exact same daily file is uploaded multiple times.</li>
               <li>Accurate day-by-day operational throughput without dropping legitimate cross-day shipments.</li>
-              <li>All company data stays strictly local in your browser via IndexedDB (zero cloud upload).</li>
-              <li>You can remove any specific file and all its records at any time via the File Manager.</li>
+              <li>New uploads store the original Excel workbook and every source row in MySQL.</li>
+              <li>Archiving a file removes it from active reports while retaining its data and audit history.</li>
             </ul>
           </div>
         </div>
