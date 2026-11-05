@@ -20,6 +20,9 @@ use Illuminate\Validation\ValidationException;
 
 class ImportController extends Controller
 {
+    /** @var array<string,int> */
+    private array $dateMilliseconds = [];
+
     public function __construct(private readonly OrganizationContext $context) {}
 
     public function index(string $organization, AuthorizationService $authorization, Request $request): JsonResponse
@@ -116,7 +119,7 @@ class ImportController extends Controller
             403,
         );
 
-        $perPage = min(max((int) $request->query('per_page', 500), 1), 1000);
+        $perPage = min(max((int) $request->query('per_page', 500), 1), 2000);
         $source = $request->query('source', 'published');
 
         if ($source === 'legacy') {
@@ -179,7 +182,7 @@ class ImportController extends Controller
                 'routing.first_hub_name', 'routing.last_dispatch_hub_name', 'routing.loss_liable_hub_name',
             ])
             ->orderBy('shipment_snapshots.id')
-            ->cursorPaginate($perPage);
+            ->toBase()->cursorPaginate($perPage);
         $nextCursor = $query->nextCursor()?->encode();
         $shipments = $query->through(fn ($row): array => $this->shipmentPayload($row))->items();
 
@@ -241,6 +244,8 @@ class ImportController extends Controller
         }
         $options = [
             'column_overrides' => $overrides,
+            // Persist the boundary so a worker restart cannot regroup committed chunks.
+            'source_chunk_rows' => max(100, min(2000, (int) config('import_ingestion.source_chunk_rows', 1000))),
             'correlation_id' => $correlationId,
             'upload_request_bytes' => max(0, (int) $request->server('CONTENT_LENGTH', 0)),
         ];
@@ -479,6 +484,7 @@ class ImportController extends Controller
 
         return $this->success($result, 202);
     }
+
     public function updateDate(Request $request, string $organization, string $importFile, AuditLogService $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -591,7 +597,7 @@ class ImportController extends Controller
             'fileId' => (string) $row->file_id,
             'fileName' => (string) $row->file_name,
             'shipmentDate' => $shipmentDate,
-            'dateMs' => $shipmentDate === '' ? 0 : Carbon::parse($shipmentDate)->startOfDay()->getTimestampMs(),
+            'dateMs' => $this->shipmentDateMilliseconds($shipmentDate),
             'tracking' => (string) ($row->tracking_number ?? ''),
             'items' => $row->items === null ? 1 : (float) $row->items,
             'business' => $row->business_name,
@@ -617,7 +623,7 @@ class ImportController extends Controller
             'fileId' => (string) $row->file_id,
             'fileName' => (string) $row->file_name,
             'shipmentDate' => $shipmentDate,
-            'dateMs' => $shipmentDate === '' ? 0 : Carbon::parse($shipmentDate)->startOfDay()->getTimestampMs(),
+            'dateMs' => $this->shipmentDateMilliseconds($shipmentDate),
             'tracking' => (string) ($row->tracking ?? ''),
             'items' => $row->items === null ? 1 : (float) $row->items,
             'business' => $row->business,
@@ -631,6 +637,11 @@ class ImportController extends Controller
             'hubs' => $hubs,
             'rawDate' => $row->raw_date,
         ];
+    }
+
+    private function shipmentDateMilliseconds(string $date): int
+    {
+        return $date === '' ? 0 : ($this->dateMilliseconds[$date] ??= Carbon::parse($date)->startOfDay()->getTimestampMs());
     }
 
     private function storeColumnMapping(string $organizationId, string $role, string $label, int $userId, mixed $now): void

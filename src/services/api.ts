@@ -158,12 +158,11 @@ export async function getImportFiles(slug: string): Promise<{
 
 export async function getAllShipments(slug: string): Promise<ShipmentRecord[]> {
   const sources: Array<'published' | 'legacy'> = ['published', 'legacy'];
-  const records: ShipmentRecord[] = [];
-
-  for (const source of sources) {
+  const recordsBySource = await Promise.all(sources.map(async (source) => {
+    const records: ShipmentRecord[] = [];
     let cursor: string | null = null;
     do {
-      const params = new URLSearchParams({ source, per_page: '1000' });
+      const params = new URLSearchParams({ source, per_page: '2000' });
       if (cursor) params.set('cursor', cursor);
       const result = await request<{ shipments: ShipmentRecord[]; pagination: { next_cursor: string | null } }>(
         `${organizationPath(slug)}/imports/shipments?${params.toString()}`,
@@ -172,9 +171,10 @@ export async function getAllShipments(slug: string): Promise<ShipmentRecord[]> {
       records.push(...result.shipments);
       cursor = result.pagination.next_cursor;
     } while (cursor);
-  }
+    return records;
+  }));
 
-  return records;
+  return recordsBySource.flat();
 }
 
 export async function getOrganizationSettings(slug: string): Promise<OrganizationSettings> {

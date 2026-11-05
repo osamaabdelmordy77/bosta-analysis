@@ -212,13 +212,13 @@ class AuthAccessTest extends TestCase
     public function test_local_vite_origin_receives_credentialed_cors_headers(): void
     {
         $response = $this->call('OPTIONS', '/api/auth/login', [], [], [], [
-            'HTTP_ORIGIN' => 'http://localhost:3000',
+            'HTTP_ORIGIN' => 'http://localhost:3001',
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'POST',
             'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'content-type,x-xsrf-token',
         ]);
 
         $response->assertNoContent()
-            ->assertHeader('access-control-allow-origin', 'http://localhost:3000')
+            ->assertHeader('access-control-allow-origin', 'http://localhost:3001')
             ->assertHeader('access-control-allow-credentials', 'true');
     }
 
@@ -616,8 +616,8 @@ class AuthAccessTest extends TestCase
     private function fromSpa(): static
     {
         return $this->withCredentials()->withHeaders([
-            'Origin' => 'http://localhost:3000',
-            'Referer' => 'http://localhost:3000/',
+            'Origin' => 'http://localhost:3001',
+            'Referer' => 'http://localhost:3001/',
         ]);
     }
 

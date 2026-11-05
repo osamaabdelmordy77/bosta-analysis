@@ -5,7 +5,7 @@ return [
     'allowed_methods' => ['*'],
     'allowed_origins' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('FRONTEND_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000'))
+        explode(',', (string) env('FRONTEND_ALLOWED_ORIGINS', 'http://localhost:3001,http://127.0.0.1:3001'))
     ))),
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['Accept', 'Content-Type', 'X-Requested-With', 'X-XSRF-TOKEN', 'X-CSRF-TOKEN'],

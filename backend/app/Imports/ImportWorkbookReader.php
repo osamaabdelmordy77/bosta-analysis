@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use DateTimeInterface;
+use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Cell\FormulaCell;
 use OpenSpout\Common\Helper\EncodingHelper;
 use OpenSpout\Reader\CSV\Options as CsvOptions;
@@ -11,6 +12,7 @@ use OpenSpout\Reader\XLSX\Options as XlsxOptions;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use RuntimeException;
 
 class ImportWorkbookReader
@@ -37,8 +39,7 @@ class ImportWorkbookReader
             throw new RuntimeException('A workbook must contain between 1 and 100 readable worksheets.');
         }
 
-        $candidates = array_values(array_filter($sourceSheets, static fn (array $sheet): bool =>
-            ($sheet['detection']['tracking'] ?? null) !== null || $sheet['detection']['score'] >= 3
+        $candidates = array_values(array_filter($sourceSheets, static fn (array $sheet): bool => ($sheet['detection']['tracking'] ?? null) !== null || $sheet['detection']['score'] >= 3
         ));
         if ($candidates === []) {
             // Match the existing browser parser's fallback without mistaking a
@@ -48,8 +49,7 @@ class ImportWorkbookReader
             }
             unset($sheet);
             $candidates = array_values(array_filter($sourceSheets, static fn (array $sheet): bool => $sheet['nonempty_data_rows'] > 0));
-            usort($candidates, static fn (array $left, array $right): int =>
-                ($right['detection']['score'] <=> $left['detection']['score'])
+            usort($candidates, static fn (array $left, array $right): int => ($right['detection']['score'] <=> $left['detection']['score'])
                 ?: ($right['nonempty_data_rows'] <=> $left['nonempty_data_rows'])
             );
             $candidates = array_slice($candidates, 0, 1);
@@ -116,10 +116,31 @@ class ImportWorkbookReader
             return;
         }
 
+        if ($inspection['format'] === 'xlsx') {
+            $targets = $this->xlsxWorksheetTargets($path);
+            $stream = new XlsxRowStream;
+            foreach ($inspection['sheets'] as $sheet) {
+                $target = $targets[(int) $sheet['index']] ?? null;
+                if (! is_string($target)) {
+                    throw new RuntimeException('An XLSX worksheet relationship could not be resolved.');
+                }
+                foreach ($stream->rows($path, $target, (string) $inspection['date_system']) as [$number, $values]) {
+                    if ($number <= (int) $sheet['header_row_number']) {
+                        continue;
+                    }
+                    $values = array_slice(array_pad($values, count($sheet['headers']), null), 0, count($sheet['headers']));
+                    if ($this->hasValues($values)) {
+                        yield ['sheet' => $sheet, 'source_row_number' => $number, 'values' => $values];
+                    }
+                }
+            }
+
+            return;
+        }
+
         $reader = $this->openStreamReader($path, $inspection['format']);
         $reader->open($path);
         try {
-            $worksheetTargets = $inspection['format'] === 'xlsx' ? $this->xlsxWorksheetTargets($path) : [];
             $selected = [];
             foreach ($inspection['sheets'] as $sheet) {
                 $selected[(int) $sheet['index']] = $sheet;
@@ -130,15 +151,6 @@ class ImportWorkbookReader
                     continue;
                 }
                 $metadata = $selected[$index];
-                $rawRows = null;
-                if ($inspection['format'] === 'xlsx') {
-                    $target = $worksheetTargets[$index] ?? null;
-                    if (! is_string($target)) {
-                        throw new RuntimeException('An XLSX worksheet relationship could not be resolved.');
-                    }
-                    $rawRows = $this->xlsxRawRows($path, $target);
-                    $rawRows->rewind();
-                }
                 foreach ($streamSheet->getRowIterator() as $rowIndex => $row) {
                     $sourceRowNumber = (int) $rowIndex;
                     if ($sourceRowNumber <= (int) $metadata['header_row_number']) {
@@ -148,15 +160,7 @@ class ImportWorkbookReader
                         throw new RuntimeException('The workbook exceeds the supported source row number limit.');
                     }
 
-                    $rawRowValues = [];
-                    while ($rawRows !== null && $rawRows->valid() && $rawRows->current()[0] < $sourceRowNumber) {
-                        $rawRows->next();
-                    }
-                    if ($rawRows !== null && $rawRows->valid() && $rawRows->current()[0] === $sourceRowNumber) {
-                        $rawRowValues = $rawRows->current()[1];
-                        $rawRows->next();
-                    }
-                    $values = $this->openSpoutValues($row->getCells(), (string) $inspection['date_system'], $rawRowValues);
+                    $values = $this->openSpoutValues($row->getCells(), (string) $inspection['date_system']);
                     $values = array_pad($values, count($metadata['headers']), null);
                     if (count($values) > count($metadata['headers'])) {
                         if (count($values) > 512) {
@@ -169,11 +173,6 @@ class ImportWorkbookReader
                     }
 
                     yield ['sheet' => $metadata, 'source_row_number' => $sourceRowNumber, 'values' => $values];
-                }
-                if ($rawRows !== null) {
-                    while ($rawRows->valid()) {
-                        $rawRows->next();
-                    }
                 }
             }
         } finally {
@@ -261,7 +260,7 @@ class ImportWorkbookReader
         fclose($handle);
 
         if (str_starts_with($signature, "PK\x03\x04")) {
-            $zip = new \ZipArchive();
+            $zip = new \ZipArchive;
             if ($zip->open($path) !== true || $zip->locateName('xl/workbook.xml') === false) {
                 throw new RuntimeException('The uploaded ZIP file is not a readable XLSX workbook.');
             }
@@ -301,10 +300,10 @@ class ImportWorkbookReader
                     }
                     $physicalRows++;
                     $values = $this->openSpoutValues($row->getCells(), $dateSystem);
-            $maxColumns = max($maxColumns, count($values));
-            if ($maxColumns > 512) {
-                throw new RuntimeException('The workbook exceeds the supported 512 source columns.');
-            }
+                    $maxColumns = max($maxColumns, count($values));
+                    if ($maxColumns > 512) {
+                        throw new RuntimeException('The workbook exceeds the supported 512 source columns.');
+                    }
                     $sampleRows[] = ['source_row_number' => $rowIndex, 'values' => $values];
                 }
                 $sheets[] = $this->analyzeSheet(
@@ -332,6 +331,7 @@ class ImportWorkbookReader
         $filter = new class implements IReadFilter
         {
             public int $startRow = 1;
+
             public int $endRow = 215;
 
             public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool
@@ -370,7 +370,7 @@ class ImportWorkbookReader
                     $sampleRows[] = ['source_row_number' => $rowIndex, 'values' => $values];
                 }
             }
-            $dateSystem = $book?->getExcelCalendar() === \PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_MAC_1904 ? '1904' : '1900';
+            $dateSystem = $book?->getExcelCalendar() === Date::CALENDAR_MAC_1904 ? '1904' : '1900';
             $sheets[] = $this->analyzeSheet((int) $sheetIndex, $sheetName, $sampleRows, $columnCount, $dateSystem, (int) $info['totalRows']);
             $book?->disconnectWorksheets();
             unset($book, $worksheet);
@@ -397,8 +397,7 @@ class ImportWorkbookReader
         $headerIndex = 0;
         $best = -1;
         foreach ($headerCandidateRows as $candidateIndex => $row) {
-            $score = count(array_filter($row['values'], static fn (mixed $value): bool =>
-                is_string($value) && trim($value) !== ''
+            $score = count(array_filter($row['values'], static fn (mixed $value): bool => is_string($value) && trim($value) !== ''
             ));
             if ($score > $best) {
                 $best = $score;
@@ -521,6 +520,7 @@ class ImportWorkbookReader
         $filter = new class implements IReadFilter
         {
             public int $startRow = 1;
+
             public int $endRow = 1;
 
             public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool
@@ -574,7 +574,7 @@ class ImportWorkbookReader
     private function openStreamReader(string $path, string $format): XlsxReader|CsvReader
     {
         if ($format === 'xlsx') {
-            $options = new XlsxOptions();
+            $options = new XlsxOptions;
             $options->SHOULD_PRESERVE_EMPTY_ROWS = true;
             $temporaryPath = (string) config('import_ingestion.reader_temp_path', storage_path('app/private/import-work'));
             if (! is_dir($temporaryPath) && ! mkdir($temporaryPath, 0700, true) && ! is_dir($temporaryPath)) {
@@ -585,7 +585,7 @@ class ImportWorkbookReader
             return new XlsxReader($options);
         }
 
-        $options = new CsvOptions();
+        $options = new CsvOptions;
         $options->SHOULD_PRESERVE_EMPTY_ROWS = true;
         $options->FIELD_DELIMITER = $this->detectDelimiter($path);
         $options->ENCODING = $this->detectEncoding($path);
@@ -630,12 +630,13 @@ class ImportWorkbookReader
         }
 
         $sample = file_get_contents($path, false, null, 0, 8192) ?: '';
+
         return mb_detect_encoding($sample, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true) ?: EncodingHelper::ENCODING_UTF8;
     }
 
     private function readXlsxDateSystem(string $path): string
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($path) !== true) {
             throw new RuntimeException('The XLSX archive could not be opened.');
         }
@@ -652,8 +653,8 @@ class ImportWorkbookReader
         }
     }
 
-    /** @param list<\OpenSpout\Common\Entity\Cell> $cells @return list<mixed> */
-    private function openSpoutValues(array $cells, string $dateSystem, array $rawNumericValues = []): array
+    /** @param list<Cell> $cells @return list<mixed> */
+    private function openSpoutValues(array $cells, string $dateSystem): array
     {
         $values = [];
         $maxIndex = $cells === [] ? -1 : max(array_keys($cells));
@@ -661,11 +662,12 @@ class ImportWorkbookReader
             $cell = $cells[$columnIndex] ?? null;
             if ($cell === null) {
                 $values[$columnIndex] = null;
+
                 continue;
             }
             $value = $cell instanceof FormulaCell ? $cell->getComputedValue() : $cell->getValue();
             if ($value instanceof DateTimeInterface) {
-                $value = $rawNumericValues[$columnIndex] ?? $this->excelSerial($value, $dateSystem);
+                $value = $this->excelSerial($value, $dateSystem);
             }
             $values[$columnIndex] = $value === '' ? null : $value;
         }
@@ -676,7 +678,7 @@ class ImportWorkbookReader
     /** @return array<int,string> worksheet iterator index to archive member */
     private function xlsxWorksheetTargets(string $path): array
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($path) !== true) {
             throw new RuntimeException('The XLSX archive could not be opened.');
         }
@@ -717,72 +719,6 @@ class ImportWorkbookReader
         } finally {
             $zip->close();
         }
-    }
-
-    /** @return \Generator<int,array{0:int,1:array<int,string>}> */
-    private function xlsxRawRows(string $path, string $worksheetTarget): \Generator
-    {
-        $xml = new \XMLReader();
-        $uri = 'zip://'.str_replace('\\', '/', $path).'#'.$worksheetTarget;
-        if (! $xml->open($uri, null, LIBXML_NONET | LIBXML_COMPACT)) {
-            throw new RuntimeException('Raw XLSX cell values could not be read.');
-        }
-        $rowNumber = 0;
-        try {
-            while ($xml->read()) {
-                if ($xml->nodeType !== \XMLReader::ELEMENT || $xml->localName !== 'row') {
-                    continue;
-                }
-                $rowNumber = (int) ($xml->getAttribute('r') ?: ($rowNumber + 1));
-                $rowDepth = $xml->depth;
-                $numericValues = [];
-                if (! $xml->isEmptyElement) {
-                    while ($xml->read()) {
-                        if ($xml->nodeType === \XMLReader::END_ELEMENT && $xml->localName === 'row' && $xml->depth === $rowDepth) {
-                            break;
-                        }
-                        if ($xml->nodeType !== \XMLReader::ELEMENT || $xml->localName !== 'c') {
-                            continue;
-                        }
-                        $reference = (string) $xml->getAttribute('r');
-                        $cellType = (string) $xml->getAttribute('t');
-                        $columnIndex = $this->xlsxColumnIndex($reference);
-                        $cellDepth = $xml->depth;
-                        $rawValue = null;
-                        if (! $xml->isEmptyElement) {
-                            while ($xml->read()) {
-                                if ($xml->nodeType === \XMLReader::END_ELEMENT && $xml->localName === 'c' && $xml->depth === $cellDepth) {
-                                    break;
-                                }
-                                if ($xml->nodeType === \XMLReader::ELEMENT && $xml->localName === 'v') {
-                                    $rawValue = $xml->readString();
-                                }
-                            }
-                        }
-                        if ($columnIndex !== null && $rawValue !== null && ($cellType === '' || $cellType === 'n')) {
-                            $numericValues[$columnIndex] = $rawValue;
-                        }
-                    }
-                }
-                yield [$rowNumber, $numericValues];
-            }
-        } finally {
-            $xml->close();
-        }
-    }
-
-    private function xlsxColumnIndex(string $reference): ?int
-    {
-        $letters = strtoupper((string) preg_replace('/[0-9]+$/', '', $reference));
-        if ($letters === '' || preg_match('/^[A-Z]+$/', $letters) !== 1) {
-            return null;
-        }
-        $column = 0;
-        foreach (str_split($letters) as $letter) {
-            $column = ($column * 26) + ord($letter) - 64;
-        }
-
-        return $column - 1;
     }
 
     private function excelSerial(DateTimeInterface $value, string $dateSystem): float

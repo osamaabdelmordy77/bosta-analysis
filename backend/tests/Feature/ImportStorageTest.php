@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Imports\ImportIngestionService;
+use App\Imports\ImportWorkbookProcessor;
+use App\Models\User;
 use App\Security\RoleCatalog;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -25,6 +26,7 @@ class ImportStorageTest extends TestCase
         }
 
         config([
+            'import_ingestion.source_chunk_rows' => 400,
             'queue.default' => 'database',
             'queue.connections.database.after_commit' => false,
             'filesystems.disks.imports_private.root' => storage_path('app/private/phase3-tests/imports'),
@@ -194,7 +196,7 @@ class ImportStorageTest extends TestCase
             $partialFileId = $partialStart->json('data.file_id');
             $partialRunId = $partialStart->json('data.run_id');
             $realIngestion = app(ImportIngestionService::class);
-            app()->instance(ImportIngestionService::class, new FailAfterFirstCommittedImportChunk());
+            app()->instance(ImportIngestionService::class, new FailAfterFirstCommittedImportChunk);
 
             $this->artisan('queue:work', [
                 'connection' => 'database',
@@ -209,6 +211,8 @@ class ImportStorageTest extends TestCase
             self::assertSame(400, DB::table('import_source_rows')->where('import_run_id', $partialRunId)->count());
             self::assertSame(1, DB::table('import_chunks')->where('import_run_id', $partialRunId)->where('status', 'completed')->count());
 
+            // A deployment can change the default without changing this run's saved boundaries.
+            config(['import_ingestion.source_chunk_rows' => 1000]);
             $this->postJson('/api/organizations/'.$slug.'/imports/'.$partialFileId.'/runs/'.$partialRunId.'/retry', [])
                 ->assertStatus(202)->assertJsonPath('data.state', 'queued');
             app()->instance(ImportIngestionService::class, $realIngestion);
@@ -261,12 +265,12 @@ class ImportStorageTest extends TestCase
             self::assertSame(2, $newerRevision['revision']);
             self::assertSame(2, DB::table('jobs')->where('queue', 'imports')->count());
 
-            app(\App\Imports\ImportWorkbookProcessor::class)->process($organizationId, $newerRevision['file_id'], $newerRevision['run_id']);
+            app(ImportWorkbookProcessor::class)->process($organizationId, $newerRevision['file_id'], $newerRevision['run_id']);
             self::assertSame('completed', DB::table('import_runs')->where('id', $newerRevision['run_id'])->value('processing_state'));
             self::assertSame($newerRevision['run_id'], DB::table('import_files')->where('id', $newerRevision['file_id'])->value('active_run_id'));
 
             try {
-                app(\App\Imports\ImportWorkbookProcessor::class)->process($organizationId, $olderRevision['file_id'], $olderRevision['run_id']);
+                app(ImportWorkbookProcessor::class)->process($organizationId, $olderRevision['file_id'], $olderRevision['run_id']);
                 self::fail('An older revision must not publish after a newer revision has completed.');
             } catch (HttpException $exception) {
                 self::assertSame(409, $exception->getStatusCode());

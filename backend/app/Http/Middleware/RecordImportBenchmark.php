@@ -67,6 +67,7 @@ class RecordImportBenchmark
 
             if ($response !== null) {
                 $response->headers->set('X-Import-Correlation-Id', $correlationId);
+                $response->headers->set('X-Import-Benchmark-Database', DB::connection()->getDatabaseName());
                 $response->headers->set('X-Import-Server-Ms', (string) $serverMs);
                 $response->headers->set('X-Import-Sql-Queries', (string) $summary['sql_query_count']);
                 $response->headers->set('X-Import-Sql-Ms', (string) $summary['sql_total_ms']);

@@ -9,7 +9,8 @@ const fixtureDir = path.join(root, 'backend', '.local', 'import-benchmark');
 const outputDir = path.join(fixtureDir, 'phase3-results');
 const filePath = path.resolve(process.argv[2] || path.join(fixtureDir, 'synthetic_bosta_15mb_211_columns.xlsx'));
 const allowedPrefix = fixtureDir.toLowerCase() + path.sep;
-if (!filePath.toLowerCase().startsWith(allowedPrefix)) {
+const explicitRealWorkbook = process.argv.includes('--real-workbook');
+if (!filePath.toLowerCase().startsWith(allowedPrefix) && !explicitRealWorkbook) {
   throw new Error(`Pipeline benchmark accepts generated fixtures under ${fixtureDir} only; it never uploads the source workbook.`);
 }
 
@@ -17,7 +18,12 @@ const fileInfo = await stat(filePath);
 if (!fileInfo.isFile()) throw new Error('The benchmark input must be a regular file.');
 const timeoutMs = Number(process.env.IMPORT_BENCHMARK_TIMEOUT_MS || 60 * 60 * 1000);
 const baseUrl = process.env.IMPORT_BENCHMARK_URL || 'http://127.0.0.1:8000';
-const origin = process.env.IMPORT_BENCHMARK_ORIGIN || 'http://localhost:3000';
+const expectedDatabase = process.env.IMPORT_BENCHMARK_DATABASE || 'bosta_analysis_benchmark';
+if (explicitRealWorkbook && (!['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname)
+  || new URL(baseUrl).port === '8000' || !expectedDatabase.endsWith('_benchmark'))) {
+  throw new Error('Real workbook benchmarks require a separate loopback API port and an isolated *_benchmark database.');
+}
+const origin = process.env.IMPORT_BENCHMARK_ORIGIN || 'http://localhost:3001';
 const organizationSlug = process.env.IMPORT_BENCHMARK_ORGANIZATION || 'phase1-benchmark';
 const email = process.env.IMPORT_BENCHMARK_EMAIL;
 const password = process.env.IMPORT_BENCHMARK_PASSWORD;
@@ -30,7 +36,7 @@ const fileReadMs = performance.now() - fileReadStartedAt;
 const sha256 = createHash('sha256').update(fileBytes).digest('hex');
 const correlationId = randomUUID();
 const extension = path.extname(filePath).toLowerCase();
-const importName = `synthetic-phase3-${correlationId}${extension}`;
+const importName = `${explicitRealWorkbook ? 'real-workbook-benchmark' : 'synthetic-phase3'}-${correlationId}${extension}`;
 const reportDate = process.env.IMPORT_BENCHMARK_REPORT_DATE || '2026-11-04';
 const apiBase = new URL('/api/', baseUrl);
 const organizationPath = `organizations/${encodeURIComponent(organizationSlug)}`;
@@ -76,13 +82,16 @@ function headers({ mutating = false } = {}) {
 }
 
 async function request(route, options = {}) {
-  const { stage = 'unspecified', ...fetchOptions } = options;
+  const { stage = 'unspecified', requireBenchmarkDatabase = false, ...fetchOptions } = options;
   const requestStartedAt = performance.now();
   const response = await fetch(new URL(route.replace(/^\//, ''), apiBase), {
     ...fetchOptions,
     headers: { ...headers({ mutating: (fetchOptions.method || 'GET') !== 'GET' }), 'X-Import-Stage': stage, ...fetchOptions.headers },
   });
   rememberCookies(response);
+  if (requireBenchmarkDatabase && response.headers.get('X-Import-Benchmark-Database') !== expectedDatabase) {
+    throw new Error('The target API did not prove it is using the expected isolated benchmark database. No workbook was uploaded.');
+  }
   const bodyText = await response.text();
   const elapsed = performance.now() - requestStartedAt;
   requestStats.count++;
@@ -121,6 +130,9 @@ await request('/auth/login', {
   body: JSON.stringify({ email, password }),
 });
 const authElapsedMs = performance.now() - authStartedAt;
+if (explicitRealWorkbook) {
+  await request('/organizations', { stage: 'benchmark_guard', requireBenchmarkDatabase: true });
+}
 const workflowStartedAt = totalStartedAt;
 
 const uploadStartedAt = performance.now();
@@ -171,7 +183,7 @@ async function readShipments(source) {
   let cursor = null;
   const seen = new Set();
   do {
-    const query = new URLSearchParams({ source, per_page: '1000' });
+    const query = new URLSearchParams({ source, per_page: '2000' });
     if (cursor) query.set('cursor', cursor);
     const result = await request(`/${organizationPath}/imports/shipments?${query}`, { stage: `results_shipments_${source}` });
     shipments.push(...result.shipments);

@@ -136,7 +136,7 @@ if (command === 'generate') {
   if (!email || !password) throw new Error('Set IMPORT_BENCHMARK_EMAIL and IMPORT_BENCHMARK_PASSWORD for the isolated benchmark account.');
 
   const cookies = new Map();
-  const origin = process.env.IMPORT_BENCHMARK_ORIGIN || 'http://localhost:3000';
+  const origin = process.env.IMPORT_BENCHMARK_ORIGIN || 'http://localhost:3001';
   const rememberCookies = (response) => {
     for (const value of response.headers.getSetCookie?.() || []) {
       const [pair] = value.split(';', 1);

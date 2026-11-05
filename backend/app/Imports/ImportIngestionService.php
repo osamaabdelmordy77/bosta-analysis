@@ -1029,7 +1029,12 @@ class ImportIngestionService
     /** @param list<array<string,mixed>> $rows */
     private function insertInBatches(string $table, array $rows): void
     {
-        $this->writeAdaptiveBatches($table, $rows, false);
+        $startedAt = hrtime(true);
+        try {
+            $this->writeAdaptiveBatches($table, $rows, false);
+        } finally {
+            app(ImportBenchmarkMetrics::class)->addPhase('write_'.$table.'_wall_ms', (hrtime(true) - $startedAt) / 1_000_000);
+        }
     }
 
     /** @param list<array<string,mixed>> $rows */
@@ -1141,11 +1146,11 @@ class ImportIngestionService
         }
         $margin = max(4096, (int) config('import_ingestion.packet_margin_bytes', 65536));
         $safeBytes = max(1024, self::$maxAllowedPacket - $margin);
-        $configuredBytes = max(1024, (int) config('import_ingestion.max_batch_bytes', 524288));
+        $configuredBytes = max(1024, (int) config('import_ingestion.max_batch_bytes', 4194304));
 
         return [
-            'rows' => max(1, (int) config('import_ingestion.max_batch_rows', 400)),
-            'bindings' => max(1, (int) config('import_ingestion.max_batch_bindings', 4000)),
+            'rows' => max(1, (int) config('import_ingestion.max_batch_rows', 1000)),
+            'bindings' => max(1, min(60000, (int) config('import_ingestion.max_batch_bindings', 48000))),
             'batch_bytes' => min($safeBytes, $configuredBytes),
             'single_row_bytes' => $safeBytes,
         ];

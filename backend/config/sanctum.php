@@ -7,7 +7,7 @@ use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
 return [
     'stateful' => array_filter(array_map(
         'trim',
-        explode(',', (string) env('SANCTUM_STATEFUL_DOMAINS', 'localhost:3000,127.0.0.1:3000,localhost,127.0.0.1'))
+        explode(',', (string) env('SANCTUM_STATEFUL_DOMAINS', 'localhost:3001,127.0.0.1:3001,localhost,127.0.0.1'))
     )),
 
     'guard' => ['web'],

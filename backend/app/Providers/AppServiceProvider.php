@@ -14,8 +14,11 @@ use App\Policies\UserPolicy;
 use App\Tenancy\OrganizationContext;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Events\TransactionCommitted;
+use Illuminate\Database\Events\TransactionCommitting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -32,7 +35,13 @@ class AppServiceProvider extends ServiceProvider
     {
         if (config('import_benchmark.enabled')) {
             DB::listen(function ($query): void {
-                app(ImportBenchmarkMetrics::class)->recordQuery((float) $query->time);
+                app(ImportBenchmarkMetrics::class)->recordQuery((float) $query->time, $query->sql);
+            });
+            Event::listen(TransactionCommitting::class, function ($event): void {
+                app(ImportBenchmarkMetrics::class)->startCommit($event->connectionName);
+            });
+            Event::listen(TransactionCommitted::class, function ($event): void {
+                app(ImportBenchmarkMetrics::class)->finishCommit($event->connectionName);
             });
         }
 

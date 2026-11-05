@@ -100,9 +100,11 @@ class ImportWorkbookProcessor
             $activeSheetIndex = null;
             $chunkIndex = 0;
             $observedRows = 0;
-            $rowsPerChunk = max(100, min(500, (int) config('import_ingestion.db_batch_rows', 400)));
+            // Existing runs used 400 rows. New runs retain their original saved size on retry.
+            $rowsPerChunk = max(100, min(2000, (int) ($options['source_chunk_rows'] ?? 400)));
 
-            $flush = function () use (&$pendingRows, &$activeSheetIndex, &$chunkIndex, &$observedRows, $organizationId, $fileId, $runId, $sheetIds, $overrides): void {
+            $flushMilliseconds = 0.0;
+            $flush = function () use (&$pendingRows, &$activeSheetIndex, &$chunkIndex, &$observedRows, &$flushMilliseconds, $organizationId, $fileId, $runId, $sheetIds, $overrides): void {
                 if ($pendingRows === [] || $activeSheetIndex === null) {
                     return;
                 }
@@ -110,6 +112,7 @@ class ImportWorkbookProcessor
                 if ($sheetId === null) {
                     throw new RuntimeException('A workbook worksheet was not registered for import.');
                 }
+                $flushStartedAt = hrtime(true);
                 $this->ingestion->ingestChunk($organizationId, $fileId, $runId, $sheetId, $chunkIndex, $pendingRows, $overrides);
                 $pendingRows = [];
                 $chunkIndex++;
@@ -118,6 +121,7 @@ class ImportWorkbookProcessor
                     'processed_source_rows' => $observedRows,
                     'updated_at' => now(),
                 ]);
+                $flushMilliseconds += (hrtime(true) - $flushStartedAt) / 1_000_000;
             };
 
             $phaseStartedAt = hrtime(true);
@@ -143,7 +147,10 @@ class ImportWorkbookProcessor
                 }
             }
             $flush();
-            $this->metrics->addPhase('read_validate_transform_and_ingest_wall_ms', (hrtime(true) - $phaseStartedAt) / 1_000_000);
+            $readAndIngestMilliseconds = (hrtime(true) - $phaseStartedAt) / 1_000_000;
+            $this->metrics->addPhase('read_validate_transform_and_ingest_wall_ms', $readAndIngestMilliseconds);
+            $this->metrics->addPhase('chunk_ingestion_and_progress_wall_ms', $flushMilliseconds);
+            $this->metrics->addPhase('reader_and_dashboard_wall_ms', max(0, $readAndIngestMilliseconds - $flushMilliseconds));
 
             $currentRun = DB::table('import_runs')->where('id', $runId)->where('organization_id', $organizationId)->first();
             $observedRows = (int) $currentRun->source_rows_count;
@@ -229,13 +236,14 @@ class ImportWorkbookProcessor
                 $existingSheet = $existing->get((int) $sheet['index']);
                 if ($existingSheet) {
                     if ((string) $existingSheet->source_sheet_name !== (string) $sheet['name']
-                        || (string) $existingSheet->source_headers !== $headers) {
+                        || json_decode((string) $existingSheet->source_headers, true, 512, JSON_THROW_ON_ERROR) !== $sheet['headers']) {
                         throw new RuntimeException('A worksheet changed while a previous import chunk was being resumed.');
                     }
                     DB::table('import_sheets')->where('id', $existingSheet->id)->update([
                         'column_mapping_plan' => json_encode($plan, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
                         'updated_at' => now(),
                     ]);
+
                     continue;
                 }
 
@@ -305,8 +313,7 @@ class ImportWorkbookProcessor
         array $options,
         object $file,
         object $content,
-    ): void
-    {
+    ): void {
         $warningCount = (int) DB::table('import_issues')->where('organization_id', $organizationId)
             ->where('import_run_id', $duplicate->id)->where('severity', 'warning')->count();
         $summary = $this->metrics->finish();
