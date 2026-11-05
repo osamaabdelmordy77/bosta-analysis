@@ -21,7 +21,7 @@ Route::prefix('auth')->group(function (): void {
     });
 });
 
-Route::middleware(['session.expiry', 'auth:sanctum'])->group(function (): void {
+Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group(function (): void {
     Route::get('/organizations', [OrganizationController::class, 'index']);
 
     Route::get('/auth/sessions', [AuthController::class, 'sessions']);
@@ -51,6 +51,7 @@ Route::middleware(['session.expiry', 'auth:sanctum'])->group(function (): void {
             Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view');
 
             Route::get('/imports', [ImportController::class, 'index']);
+            Route::get('/imports/jobs', [ImportController::class, 'jobs'])->middleware('permission:imports.manage');
             Route::get('/imports/shipments', [ImportController::class, 'shipments']);
             Route::get('/settings', [ImportController::class, 'settings']);
             Route::put('/settings/{key}', [ImportController::class, 'saveSetting'])->whereIn('key', ['hubBasis', 'columnOverrides']);
@@ -60,9 +61,7 @@ Route::middleware(['session.expiry', 'auth:sanctum'])->group(function (): void {
                 ->whereNumber('chunk')->middleware('permission:imports.manage');
             Route::post('/legacy-import-files/{legacyFile}/complete', [LegacyImportController::class, 'complete'])
                 ->middleware('permission:imports.manage');
-            Route::post('/imports/{importFile}/runs/{run}/sheets/{sheet}/chunks', [ImportController::class, 'appendChunk'])
-                ->middleware('permission:imports.manage');
-            Route::post('/imports/{importFile}/runs/{run}/publish', [ImportController::class, 'publish'])
+            Route::post('/imports/{importFile}/runs/{run}/retry', [ImportController::class, 'retry'])
                 ->middleware('permission:imports.manage');
             Route::patch('/imports/{importFile}/date', [ImportController::class, 'updateDate'])
                 ->middleware('permission:imports.manage');

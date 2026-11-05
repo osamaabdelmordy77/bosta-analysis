@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\ClearOrganizationContext;
 use App\Http\Middleware\ExpireStaleDatabaseSession;
+use App\Http\Middleware\RecordImportBenchmark;
 use App\Http\Middleware\RejectOrganizationOverride;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\ResolveOrganization;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'organization.override' => RejectOrganizationOverride::class,
             'organization.resolve' => ResolveOrganization::class,
             'session.expiry' => ExpireStaleDatabaseSession::class,
+            'import.benchmark' => RecordImportBenchmark::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

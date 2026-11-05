@@ -17,9 +17,12 @@ export interface ProgressCallback {
   }): void;
 }
 
+export type ParseTimingCallback = (phase: 'browser_file_read' | 'browser_workbook_parse', milliseconds: number) => void;
+
 export async function processExcelFile(
   payload: ProcessFilePayload,
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  onTiming?: ParseTimingCallback,
 ): Promise<ParseResult> {
   const { file, fileId, shipmentDate, overrides } = payload;
 
@@ -29,7 +32,9 @@ export async function processExcelFile(
     status: 'reading',
   });
 
+  const readStartedAt = performance.now();
   const buffer = await file.arrayBuffer();
+  onTiming?.('browser_file_read', performance.now() - readStartedAt);
 
   onProgress?.({
     fileId,
@@ -45,6 +50,7 @@ export async function processExcelFile(
         { type: 'module' }
       );
 
+      const parseStartedAt = performance.now();
       const result = await new Promise<ParseResult>((resolve, reject) => {
         worker.onmessage = (e: MessageEvent) => {
           if (e.data.type === 'complete') {
@@ -69,6 +75,7 @@ export async function processExcelFile(
           overrides,
         }, [buffer]);
       });
+      onTiming?.('browser_workbook_parse', performance.now() - parseStartedAt);
 
       onProgress?.({
         fileId,
@@ -94,9 +101,11 @@ export async function processExcelFile(
   }
 
   // Direct main thread fallback
+  const parseStartedAt = performance.now();
   const res = parseExcelBuffer(buffer, fileId, file.name, shipmentDate, overrides, {
     includeDashboardRecords: false,
   });
+  onTiming?.('browser_workbook_parse', performance.now() - parseStartedAt);
   onProgress?.({
     fileId,
     fileName: file.name,

@@ -157,6 +157,7 @@ export interface ParseResult {
   sourceSheets: Array<{
     index: number;
     name: string;
+    dateSystem: '1900' | '1904';
     headerRowNumber: number;
     headers: string[];
     rows: Array<{ sourceRowNumber: number; values: unknown[]; dashboardRecord?: ShipmentRecord }>;
@@ -181,7 +182,8 @@ export function parseExcelBuffer(
   options: { includeDashboardRecords?: boolean } = {},
 ): ParseResult {
   const includeDashboardRecords = options.includeDashboardRecords !== false;
-  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true, dense: true });
+  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: false, dense: true });
+  const dateSystem: '1900' | '1904' = wb.Workbook?.WBProps?.date1904 ? '1904' : '1900';
 
   const [y, m, d] = shipmentDate.split('-');
   const dateMs = Date.UTC(+y, +m - 1, +d);
@@ -230,6 +232,7 @@ export function parseExcelBuffer(
     return {
       index: sheetIndex,
       name,
+      dateSystem,
       headers,
       hnorm: headers.map(norm),
       rows,
@@ -387,6 +390,7 @@ export function parseExcelBuffer(
         return {
           index: sheet.index,
           name: sheet.name,
+          dateSystem: sheet.dateSystem,
           headerRowNumber: sheet.sourceHeaderRowNumber,
           headers: sheet.sourceHeaders,
           rows: sheet.sourceRows,
@@ -402,6 +406,7 @@ export function parseExcelBuffer(
       return {
         index: sheet.index,
         name: sheet.name,
+        dateSystem: sheet.dateSystem,
         headerRowNumber: sheet.sourceHeaderRowNumber,
         headers: sheet.sourceHeaders,
         rows: sheet.sourceRows.map((sourceRow) => ({

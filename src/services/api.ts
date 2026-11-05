@@ -1,5 +1,10 @@
 import { UploadedFile, ShipmentRecord } from '../types';
-import { ParseResult } from '../utils/excelParser';
+import {
+  beginImportBenchmarkRequest,
+  finishImportBenchmarkRequest,
+  importBenchmarkEnabled,
+  importBenchmarkHeaders,
+} from './importBenchmark';
 
 export interface OrganizationOption {
   id: string;
@@ -22,6 +27,23 @@ export interface AuthUser {
 export interface OrganizationSettings {
   hubBasis?: string;
   columnOverrides?: Record<string, string>;
+}
+
+export interface ImportJob {
+  run_id: string;
+  file_id: string;
+  revision: number;
+  name: string;
+  report_date: string | null;
+  state: 'uploaded' | 'queued' | 'parsing' | 'importing' | 'finalizing' | 'completed' | 'failed';
+  error_code: string | null;
+  error: string | null;
+  processed_rows: number;
+  total_rows: number | null;
+  counts: { source: number; accepted: number; duplicates: number; rejected: number };
+  metrics?: Record<string, unknown> | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 interface ApiEnvelope<T> {
@@ -66,8 +88,28 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(path, { ...init, method, headers, credentials: 'include' });
-  const payload = await response.json().catch(() => ({})) as ApiEnvelope<T>;
+  const stage = headers.get('X-Import-Stage') || 'unspecified';
+  for (const [name, value] of Object.entries(importBenchmarkHeaders(stage))) headers.set(name, value);
+  const benchmarkRequest = beginImportBenchmarkRequest(stage, init.body);
+
+  let response: Response;
+  try {
+    response = await fetch(path, { ...init, method, headers, credentials: 'include' });
+  } catch (error) {
+    finishImportBenchmarkRequest(benchmarkRequest);
+    throw error;
+  }
+  let payload: ApiEnvelope<T>;
+  let responseBodyBytes: number | undefined;
+  if (importBenchmarkEnabled()) {
+    const responseText = await response.text();
+    responseBodyBytes = new TextEncoder().encode(responseText).byteLength;
+    try { payload = responseText ? JSON.parse(responseText) as ApiEnvelope<T> : {} as ApiEnvelope<T>; }
+    catch { payload = {} as ApiEnvelope<T>; }
+  } else {
+    payload = await response.json().catch(() => ({})) as ApiEnvelope<T>;
+  }
+  finishImportBenchmarkRequest(benchmarkRequest, response, responseBodyBytes);
   if (!response.ok) {
     throw new ApiError(
       payload.message || `Request failed with HTTP ${response.status}.`,
@@ -108,7 +150,9 @@ export async function getImportFiles(slug: string): Promise<{
   headers: string[];
   hubLabels: string[];
 }> {
-  const result = await request<{ files: UploadedFile[]; all_headers: string[]; hub_labels: string[] }>(`${organizationPath(slug)}/imports`);
+  const result = await request<{ files: UploadedFile[]; all_headers: string[]; hub_labels: string[] }>(`${organizationPath(slug)}/imports`, {
+    headers: importBenchmarkHeaders('results_files'),
+  });
   return { files: result.files, headers: result.all_headers, hubLabels: result.hub_labels };
 }
 
@@ -123,6 +167,7 @@ export async function getAllShipments(slug: string): Promise<ShipmentRecord[]> {
       if (cursor) params.set('cursor', cursor);
       const result = await request<{ shipments: ShipmentRecord[]; pagination: { next_cursor: string | null } }>(
         `${organizationPath(slug)}/imports/shipments?${params.toString()}`,
+        { headers: importBenchmarkHeaders(`results_shipments_${source}`) },
       );
       records.push(...result.shipments);
       cursor = result.pagination.next_cursor;
@@ -133,7 +178,9 @@ export async function getAllShipments(slug: string): Promise<ShipmentRecord[]> {
 }
 
 export async function getOrganizationSettings(slug: string): Promise<OrganizationSettings> {
-  const result = await request<{ settings: OrganizationSettings }>(`${organizationPath(slug)}/settings`);
+  const result = await request<{ settings: OrganizationSettings }>(`${organizationPath(slug)}/settings`, {
+    headers: importBenchmarkHeaders('results_settings'),
+  });
   return result.settings;
 }
 
@@ -144,72 +191,100 @@ export async function saveOrganizationSetting(slug: string, key: keyof Organizat
   });
 }
 
-export async function startWorkbookImport(
+export async function uploadWorkbookFile(
   slug: string,
   file: File,
   reportDate: string,
   manualDate: boolean,
-  parsed: ParseResult,
   columnOverrides: Record<string, string>,
-): Promise<{ alreadyImported: boolean; resumed: boolean; fileId: string; runId: string; sheetIds: Record<number, string>; revision: number; counts: { accepted: number; duplicates: number; rejected: number } }> {
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<{ alreadyImported: boolean; duplicateUpload: boolean; fileId: string; runId: string; revision: number; state: ImportJob['state']; counts: ImportJob['counts']; correlationId: string; uploadElapsedMs: number }> {
+  const clientStartedAt = performance.now();
+  const correlationId = crypto.randomUUID();
   const body = new FormData();
   body.set('file', file, file.name);
   body.set('report_date', reportDate);
   body.set('manual_date', manualDate ? '1' : '0');
-  body.set('sheets', JSON.stringify(parsed.sourceSheets.map(({ index, name, headerRowNumber, headers }) => ({
-    index,
-    name,
-    header_row_number: headerRowNumber,
-    headers,
-  }))));
   body.set('column_overrides', JSON.stringify(columnOverrides));
 
-  const result = await request<{
+  const token = await csrfToken();
+  const headers = {
+    Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-XSRF-TOKEN': token,
+    'X-Import-Stage': 'file_upload',
+    ...importBenchmarkHeaders('file_upload'),
+    'X-Import-Correlation-Id': correlationId,
+  };
+  const sample = beginImportBenchmarkRequest('file_upload', body);
+  const result = await new Promise<ApiEnvelope<{
     already_imported: boolean;
-    resumed: boolean;
+    duplicate_upload: boolean;
     file_id: string;
     run_id: string;
-    sheet_ids: Record<string, string>;
     revision: number;
-    counts: { accepted: number; duplicates: number; rejected: number };
-  }>(`${organizationPath(slug)}/imports`, { method: 'POST', body });
-
+    state: ImportJob['state'];
+    counts: ImportJob['counts'];
+    correlation_id: string;
+  }>>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${organizationPath(slug)}/imports`);
+    xhr.withCredentials = true;
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded, event.total);
+    };
+    xhr.onerror = () => {
+      finishImportBenchmarkRequest(sample);
+      reject(new ApiError('The workbook upload failed because the connection was interrupted.', 0));
+    };
+    xhr.onload = () => {
+      const responseHeaders = new Headers();
+      for (const headerName of ['X-Import-Correlation-Id', 'X-Import-Server-Ms', 'X-Import-Sql-Queries', 'X-Import-Sql-Ms', 'X-Import-Server-Phases', 'X-Import-Peak-Memory-Bytes', 'X-Import-Request-Bytes', 'Content-Length']) {
+        const value = xhr.getResponseHeader(headerName);
+        if (value) responseHeaders.set(headerName, value);
+      }
+      const response = new Response(xhr.responseText, { status: xhr.status, headers: responseHeaders });
+      finishImportBenchmarkRequest(sample, response, new TextEncoder().encode(xhr.responseText).byteLength);
+      let payload: ApiEnvelope<{
+        already_imported: boolean; duplicate_upload: boolean; file_id: string; run_id: string;
+        revision: number; state: ImportJob['state']; counts: ImportJob['counts'];
+        correlation_id: string;
+      }>;
+      try { payload = JSON.parse(xhr.responseText) as typeof payload; }
+      catch { payload = {} as typeof payload; }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new ApiError(payload.message || `Upload failed with HTTP ${xhr.status}.`, xhr.status, payload.error?.code));
+        return;
+      }
+      resolve(payload);
+    };
+    xhr.send(body);
+  });
+  const data = result.data;
   return {
-    alreadyImported: result.already_imported,
-    resumed: result.resumed,
-    fileId: result.file_id,
-    runId: result.run_id,
-    sheetIds: Object.fromEntries(Object.entries(result.sheet_ids).map(([index, id]) => [Number(index), id])),
-    revision: result.revision,
-    counts: result.counts,
+    alreadyImported: data.already_imported,
+    duplicateUpload: data.duplicate_upload,
+    fileId: data.file_id,
+    runId: data.run_id,
+    revision: data.revision,
+    state: data.state,
+    counts: data.counts,
+    correlationId: data.correlation_id || correlationId,
+    uploadElapsedMs: performance.now() - clientStartedAt,
   };
 }
 
-export async function uploadWorkbookRows(
-  slug: string,
-  fileId: string,
-  runId: string,
-  sheetId: string,
-  chunkIndex: number,
-  rows: ParseResult['sourceSheets'][number]['rows'],
-  columnOverrides: Record<string, string>,
-): Promise<void> {
-  await request(`${organizationPath(slug)}/imports/${fileId}/runs/${runId}/sheets/${sheetId}/chunks`, {
-    method: 'POST',
-    body: JSON.stringify({
-      chunk_index: chunkIndex,
-      rows: rows.map((row) => ({
-        source_row_number: row.sourceRowNumber,
-        values: row.values,
-        ...(row.dashboardRecord ? { dashboard_record: row.dashboardRecord } : {}),
-      })),
-      column_overrides: columnOverrides,
-    }),
-  });
+export async function getImportJobs(slug: string): Promise<ImportJob[]> {
+  const result = await request<{ jobs: ImportJob[] }>(`${organizationPath(slug)}/imports/jobs`);
+  return result.jobs;
 }
 
-export async function publishWorkbookImport(slug: string, fileId: string, runId: string): Promise<void> {
-  await request(`${organizationPath(slug)}/imports/${fileId}/runs/${runId}/publish`, { method: 'POST', body: '{}' });
+export async function retryImportRun(slug: string, fileId: string, runId: string): Promise<void> {
+  await request(`${organizationPath(slug)}/imports/${fileId}/runs/${runId}/retry`, {
+    method: 'POST',
+    body: '{}',
+  });
 }
 
 export async function archiveImport(slug: string, fileId: string): Promise<void> {

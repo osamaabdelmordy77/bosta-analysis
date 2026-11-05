@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Imports\ImportIngestionService;
 use App\Imports\ImportFileContentStorage;
+use App\Imports\ImportIngestionService;
+use App\Jobs\ProcessImportWorkbook;
 use App\Models\ShipmentSnapshot;
 use App\Security\AuditLogService;
 use App\Security\AuthorizationService;
@@ -129,18 +130,19 @@ class ImportController extends Controller
                 ->where('records.organization_id', $this->context->requireId())
                 ->whereNull('files.archived_at')
                 ->select([
-                    'records.id as record_id', 'records.shipment_date', 'records.tracking', 'records.items',
+                    'records.id', 'records.id as record_id', 'records.shipment_date', 'records.tracking', 'records.items',
                     'records.business', 'records.ship_type', 'records.package_type', 'records.package_size',
                     'records.pickup_city', 'records.drop_city', 'records.pickup_zone', 'records.assigned_hub',
                     'records.hubs', 'records.raw_date', 'files.id as file_id', 'files.original_name as file_name',
                 ])
                 ->orderBy('records.id')
-                ->cursorPaginate($perPage)
-                ->through(fn ($row): array => $this->legacyShipmentPayload($row));
+                ->cursorPaginate($perPage);
+            $nextCursor = $records->nextCursor()?->encode();
+            $shipments = $records->through(fn ($row): array => $this->legacyShipmentPayload($row))->items();
 
             return $this->success([
-                'shipments' => $records->items(),
-                'pagination' => ['next_cursor' => $records->nextCursor()?->encode()],
+                'shipments' => $shipments,
+                'pagination' => ['next_cursor' => $nextCursor],
             ]);
         }
 
@@ -168,7 +170,7 @@ class ImportController extends Controller
                     ->on('routing.organization_id', '=', 'shipment_snapshots.organization_id');
             })
             ->select([
-                'shipment_snapshots.id as snapshot_id', 'runs.report_date', 'files.id as file_id',
+                'shipment_snapshots.id', 'shipment_snapshots.id as snapshot_id', 'runs.report_date', 'files.id as file_id',
                 'files.original_name as file_name', 'shipment_snapshots.tracking_number', 'shipment_snapshots.items',
                 'shipment_snapshots.business_name', 'shipment_snapshots.shipment_type',
                 'shipment_snapshots.package_type', 'shipment_snapshots.package_size',
@@ -177,330 +179,306 @@ class ImportController extends Controller
                 'routing.first_hub_name', 'routing.last_dispatch_hub_name', 'routing.loss_liable_hub_name',
             ])
             ->orderBy('shipment_snapshots.id')
-            ->cursorPaginate($perPage)
-            ->through(fn ($row): array => $this->shipmentPayload($row));
+            ->cursorPaginate($perPage);
+        $nextCursor = $query->nextCursor()?->encode();
+        $shipments = $query->through(fn ($row): array => $this->shipmentPayload($row))->items();
 
         return $this->success([
-            'shipments' => $query->items(),
-            'pagination' => ['next_cursor' => $query->nextCursor()?->encode()],
+            'shipments' => $shipments,
+            'pagination' => ['next_cursor' => $nextCursor],
         ]);
     }
 
-    public function store(Request $request, string $organization, AuditLogService $audit, ImportFileContentStorage $contentStorage): JsonResponse
-    {
+    public function store(
+        Request $request,
+        string $organization,
+        AuditLogService $audit,
+        ImportFileContentStorage $contentStorage,
+    ): JsonResponse {
         $validated = $request->validate([
             'file' => ['required', 'file', 'max:32768'],
             'report_date' => ['required', 'date_format:Y-m-d'],
             'manual_date' => ['sometimes', 'boolean'],
-            'sheets' => ['required', 'string', 'max:1000000'],
             'column_overrides' => ['sometimes', 'string', 'max:10000'],
         ]);
-
-        $sheets = json_decode($validated['sheets'], true, 512, JSON_THROW_ON_ERROR);
-        if (! is_array($sheets) || $sheets === [] || count($sheets) > 100) {
-            throw ValidationException::withMessages(['sheets' => 'The workbook must include between 1 and 100 sheets.']);
-        }
-        foreach ($sheets as $sheet) {
-            if (! is_array($sheet)
-                || ! is_string($sheet['name'] ?? null)
-                || ! is_array($sheet['headers'] ?? null)
-                || count($sheet['headers']) > 512) {
-                throw ValidationException::withMessages(['sheets' => 'A sheet name or header list is invalid.']);
-            }
+        if (config('queue.default') !== 'database' || (bool) config('queue.connections.database.after_commit', false)) {
+            abort(503, 'Workbook imports require the transactional database queue connection.');
         }
 
         $overrides = [];
-        if (! empty($validated['column_overrides'])) {
-            $overrides = json_decode($validated['column_overrides'], true, 512, JSON_THROW_ON_ERROR);
+        if (isset($validated['column_overrides']) && $validated['column_overrides'] !== '') {
+            try {
+                $overrides = json_decode($validated['column_overrides'], true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                throw ValidationException::withMessages(['column_overrides' => 'Column overrides must be valid JSON.']);
+            }
             if (! is_array($overrides)) {
                 throw ValidationException::withMessages(['column_overrides' => 'Column overrides must be an object.']);
             }
         }
-
         foreach ($overrides as $role => $label) {
-            if (! is_string($role) || ! is_string($label)) {
-                throw ValidationException::withMessages(['column_overrides' => 'Column overrides must contain text role names and labels.']);
+            if (! is_string($role) || ! is_string($label) || mb_strlen($label) > 500) {
+                throw ValidationException::withMessages(['column_overrides' => 'Column overrides must contain short text role names and labels.']);
             }
         }
-
-        $normalizedSheets = [];
-        foreach (array_values($sheets) as $index => $sheet) {
-            $normalizedSheets[] = [
-                'index' => (int) ($sheet['index'] ?? $index),
-                'name' => mb_substr(trim($sheet['name']), 0, 500),
-                'header_row_number' => max(1, (int) ($sheet['header_row_number'] ?? 1)),
-                'headers' => array_map(fn ($header): string => mb_substr(trim((string) $header), 0, 500), $sheet['headers']),
-            ];
-        }
         ksort($overrides);
-        $mappingFingerprint = hash('sha256', json_encode([
-            'report_date' => $validated['report_date'],
-            'manual_date' => (bool) ($validated['manual_date'] ?? false),
-            'sheets' => $normalizedSheets,
-            'column_overrides' => $overrides,
-        ], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
 
         $uploaded = $request->file('file');
         $this->assertSupportedImportFile($uploaded);
-        $name = basename(str_replace('\\', '/', $uploaded->getClientOriginalName()));
-        $sha256 = hash_file('sha256', $uploaded->getRealPath());
+        $sourcePath = $uploaded->getRealPath();
+        $sha256 = hash_file('sha256', $sourcePath);
+        if (! is_string($sha256)) {
+            throw ValidationException::withMessages(['file' => 'The uploaded workbook could not be fingerprinted.']);
+        }
+        $name = mb_substr(basename(str_replace('\\', '/', $uploaded->getClientOriginalName())), 0, 1000);
         $identityHash = hash('sha256', mb_strtolower(trim($name)));
         $organizationId = $this->context->requireId();
         $userId = (int) $request->user()->id;
-        $result = DB::transaction(function () use ($uploaded, $name, $sha256, $identityHash, $organizationId, $userId, $validated, $normalizedSheets, $overrides, $mappingFingerprint, $contentStorage): array {
-            $file = DB::table('import_files')->where('organization_id', $organizationId)
-                ->where('identity_hash', $identityHash)->lockForUpdate()->first();
+        $manualDate = (bool) ($validated['manual_date'] ?? false);
+        $correlationId = (string) $request->header('X-Import-Correlation-Id', '');
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $correlationId) !== 1) {
+            $correlationId = (string) Str::uuid();
+        }
+        $options = [
+            'column_overrides' => $overrides,
+            'correlation_id' => $correlationId,
+            'upload_request_bytes' => max(0, (int) $request->server('CONTENT_LENGTH', 0)),
+        ];
+        $optionsJson = json_encode($options, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+        $privateOriginal = null;
 
-            if ($file && hash_equals((string) $file->sha256, $sha256)) {
-                $matchingRun = DB::table('import_runs')->where('import_file_id', $file->id)
-                    ->where('organization_id', $organizationId)->where('report_date', $validated['report_date'])
-                    ->where('mapping_fingerprint', $mappingFingerprint)
-                    ->whereIn('status', ['importing', 'published'])->orderByDesc('revision')->first();
-
-                if ($matchingRun?->status === 'published') {
-                    return [
-                        'already_imported' => true,
-                        'resumed' => false,
-                        'file_id' => (string) $file->id,
-                        'run_id' => (string) $matchingRun->id,
-                        'sheet_ids' => [],
-                        'revision' => (int) $matchingRun->revision,
-                        'counts' => [
-                            'accepted' => (int) $matchingRun->accepted_rows_count,
-                            'duplicates' => (int) $matchingRun->duplicate_rows_count,
-                            'rejected' => (int) $matchingRun->rejected_rows_count,
-                        ],
-                    ];
+        try {
+            $result = DB::transaction(function () use (
+                $uploaded, $sourcePath, $sha256, $identityHash, $name, $organizationId, $userId,
+                $validated, $manualDate, $overrides, $optionsJson, $correlationId, $contentStorage, &$privateOriginal,
+            ): array {
+                $file = DB::table('import_files')->where('organization_id', $organizationId)
+                    ->where('identity_hash', $identityHash)->lockForUpdate()->first();
+                if (! $file) {
+                    $candidateId = (string) Str::ulid();
+                    DB::table('import_files')->insertOrIgnore([
+                        'id' => $candidateId,
+                        'organization_id' => $organizationId,
+                        'original_name' => $name,
+                        'media_type' => $uploaded->getClientMimeType(),
+                        'size_bytes' => (int) $uploaded->getSize(),
+                        'sha256' => $sha256,
+                        'identity_hash' => $identityHash,
+                        'storage_disk' => 'imports_private',
+                        'storage_path' => 'pending',
+                        'active_run_id' => null,
+                        'archived_at' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $file = DB::table('import_files')->where('organization_id', $organizationId)
+                        ->where('identity_hash', $identityHash)->lockForUpdate()->first();
                 }
+                abort_unless($file, 503, 'The import record could not be initialized.');
+                $fileId = (string) $file->id;
 
-                if ($matchingRun?->status === 'importing') {
-                    $sheetIds = DB::table('import_sheets')->where('import_run_id', $matchingRun->id)
-                        ->where('organization_id', $organizationId)->pluck('id', 'source_sheet_index')
-                        ->map(fn ($id): string => (string) $id)->all();
-
-                    if (count($sheetIds) === count($normalizedSheets)) {
+                $matchingRuns = DB::table('import_runs as runs')
+                    ->join('import_file_contents as contents', 'contents.import_run_id', '=', 'runs.id')
+                    ->where('runs.organization_id', $organizationId)->where('runs.import_file_id', $fileId)
+                    ->where('runs.report_date', $validated['report_date'])->where('runs.report_date_is_manual', $manualDate)
+                    ->where('contents.sha256', $sha256)->orderByDesc('runs.revision')
+                    ->get(['runs.id', 'runs.revision', 'runs.status', 'runs.processing_state', 'runs.processing_options',
+                        'runs.mapping_fingerprint', 'runs.source_rows_count', 'runs.accepted_rows_count',
+                        'runs.duplicate_rows_count', 'runs.rejected_rows_count', 'runs.issues_count']);
+                foreach ($matchingRuns as $matchingRun) {
+                    $storedOptions = is_string($matchingRun->processing_options)
+                        ? json_decode($matchingRun->processing_options, true)
+                        : $matchingRun->processing_options;
+                    if (($storedOptions['column_overrides'] ?? []) !== $overrides) {
+                        continue;
+                    }
+                    if (in_array($matchingRun->processing_state, ['queued', 'parsing', 'importing', 'finalizing'], true)) {
                         return [
                             'already_imported' => false,
-                            'resumed' => true,
-                            'file_id' => (string) $file->id,
+                            'duplicate_upload' => true,
+                            'file_id' => $fileId,
                             'run_id' => (string) $matchingRun->id,
-                            'sheet_ids' => $sheetIds,
                             'revision' => (int) $matchingRun->revision,
-                            'counts' => [
-                                'accepted' => (int) $matchingRun->accepted_rows_count,
-                                'duplicates' => (int) $matchingRun->duplicate_rows_count,
-                                'rejected' => (int) $matchingRun->rejected_rows_count,
-                            ],
+                            'state' => (string) $matchingRun->processing_state,
+                            'correlation_id' => (string) (($storedOptions['correlation_id'] ?? null) ?: $matchingRun->id),
+                            'counts' => ['source' => (int) $matchingRun->source_rows_count, 'accepted' => (int) $matchingRun->accepted_rows_count,
+                                'duplicates' => (int) $matchingRun->duplicate_rows_count, 'rejected' => (int) $matchingRun->rejected_rows_count],
+                        ];
+                    }
+                    if ($matchingRun->status === 'published' && $matchingRun->mapping_fingerprint !== null) {
+                        return [
+                            'already_imported' => true,
+                            'duplicate_upload' => true,
+                            'file_id' => $fileId,
+                            'run_id' => (string) $matchingRun->id,
+                            'revision' => (int) $matchingRun->revision,
+                            'state' => 'completed',
+                            'correlation_id' => (string) (($storedOptions['correlation_id'] ?? null) ?: $matchingRun->id),
+                            'counts' => ['source' => (int) $matchingRun->source_rows_count, 'accepted' => (int) $matchingRun->accepted_rows_count,
+                                'duplicates' => (int) $matchingRun->duplicate_rows_count, 'rejected' => (int) $matchingRun->rejected_rows_count,
+                                'issues' => (int) $matchingRun->issues_count],
                         ];
                     }
                 }
 
-                // Preserve idempotency for published runs created before mapping fingerprints existed.
-                $legacyPublishedRun = DB::table('import_runs')->where('import_file_id', $file->id)
-                    ->where('organization_id', $organizationId)->where('report_date', $validated['report_date'])
-                    ->whereNull('mapping_fingerprint')->where('status', 'published')->orderByDesc('revision')->first();
-                if ($legacyPublishedRun) {
-                    return [
-                        'already_imported' => true,
-                        'resumed' => false,
-                        'file_id' => (string) $file->id,
-                        'run_id' => (string) $legacyPublishedRun->id,
-                        'sheet_ids' => [],
-                        'revision' => (int) $legacyPublishedRun->revision,
-                        'counts' => [
-                            'accepted' => (int) $legacyPublishedRun->accepted_rows_count,
-                            'duplicates' => (int) $legacyPublishedRun->duplicate_rows_count,
-                            'rejected' => (int) $legacyPublishedRun->rejected_rows_count,
-                        ],
-                    ];
-                }
-            }
+                $revision = (int) DB::table('import_runs')->where('import_file_id', $fileId)
+                    ->where('organization_id', $organizationId)->max('revision') + 1;
+                $runId = (string) Str::ulid();
+                $extension = strtolower($uploaded->getClientOriginalExtension());
+                $stored = $contentStorage->storePrivateOriginal($sourcePath, $organizationId, $runId, $extension, $sha256);
+                $privateOriginal = ['disk' => $stored['disk'], 'path' => $stored['path']];
+                $now = now();
 
-            $now = now();
-            $fileId = $file?->id ? (string) $file->id : (string) Str::ulid();
-            $fileValues = [
-                'organization_id' => $organizationId,
-                'original_name' => $name,
-                'media_type' => $uploaded->getClientMimeType(),
-                'size_bytes' => (int) $uploaded->getSize(),
-                'sha256' => $sha256,
-                'identity_hash' => $identityHash,
-                'storage_disk' => 'mysql',
-                'storage_path' => 'import_file_contents',
-                'archived_at' => null,
-                'updated_at' => $now,
-            ];
-            if ($file) {
-                DB::table('import_files')->where('id', $fileId)->update($fileValues);
-            } else {
-                DB::table('import_files')->insert(array_merge($fileValues, [
-                    'id' => $fileId,
-                    'active_run_id' => null,
-                    'created_at' => $now,
-                ]));
-            }
-
-            $revision = (int) DB::table('import_runs')->where('import_file_id', $fileId)->max('revision') + 1;
-            $runId = (string) Str::ulid();
-            DB::table('import_runs')->insert([
-                'id' => $runId,
-                'organization_id' => $organizationId,
-                'import_file_id' => $fileId,
-                'uploaded_by' => $userId,
-                'revision' => $revision,
-                'mapping_version' => 1,
-                'mapping_fingerprint' => $mappingFingerprint,
-                'duplicate_policy' => 'preserve_and_mark',
-                'report_date' => $validated['report_date'],
-                'report_date_is_manual' => (bool) ($validated['manual_date'] ?? false),
-                'report_timezone' => config('app.timezone'),
-                'status' => 'importing',
-                'source_rows_count' => 0,
-                'accepted_rows_count' => 0,
-                'duplicate_rows_count' => 0,
-                'rejected_rows_count' => 0,
-                'issues_count' => 0,
-                'started_at' => $now,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-
-            $contentId = (string) Str::ulid();
-            DB::table('import_file_contents')->insert([
-                'id' => $contentId,
-                'organization_id' => $organizationId,
-                'import_file_id' => $fileId,
-                'import_run_id' => $runId,
-                'media_type' => $uploaded->getClientMimeType(),
-                'sha256' => $sha256,
-                'contents' => null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-            $contentStorage->store($contentId, $uploaded->getRealPath());
-
-            $sheetIds = [];
-            foreach ($normalizedSheets as $sheet) {
-                $sheetId = (string) Str::ulid();
-                $headers = $sheet['headers'];
-                DB::table('import_sheets')->insert([
-                    'id' => $sheetId,
+                DB::table('import_files')->where('id', $fileId)->where('organization_id', $organizationId)->update([
+                    'original_name' => $name,
+                    'media_type' => $uploaded->getClientMimeType(),
+                    'size_bytes' => $stored['bytes'],
+                    'sha256' => $stored['sha256'],
+                    'storage_disk' => $stored['disk'],
+                    'storage_path' => $stored['path'],
+                    'archived_at' => null,
+                    'updated_at' => $now,
+                ]);
+                DB::table('import_runs')->insert([
+                    'id' => $runId,
                     'organization_id' => $organizationId,
-                    'import_run_id' => $runId,
-                    'source_sheet_index' => $sheet['index'],
-                    'source_sheet_name' => $sheet['name'],
-                    'source_headers' => json_encode($headers, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
-                    'header_row_number' => $sheet['header_row_number'],
-                    'data_rows_count' => 0,
-                    'detected_columns_count' => count($headers),
+                    'import_file_id' => $fileId,
+                    'uploaded_by' => $userId,
+                    'revision' => $revision,
+                    'mapping_version' => 1,
+                    'mapping_fingerprint' => null,
+                    'processing_options' => $optionsJson,
+                    'duplicate_policy' => 'preserve_and_mark',
+                    'report_date' => $validated['report_date'],
+                    'report_date_is_manual' => $manualDate,
+                    'report_timezone' => config('app.timezone'),
+                    'status' => 'importing',
+                    'processing_state' => 'uploaded',
+                    'source_rows_count' => 0,
+                    'accepted_rows_count' => 0,
+                    'duplicate_rows_count' => 0,
+                    'rejected_rows_count' => 0,
+                    'issues_count' => 0,
+                    'processed_source_rows' => 0,
+                    'total_source_rows' => null,
+                    'queued_at' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
-                $sheetIds[$sheet['index']] = $sheetId;
+                $contentId = (string) Str::ulid();
+                DB::table('import_file_contents')->insert([
+                    'id' => $contentId,
+                    'organization_id' => $organizationId,
+                    'import_file_id' => $fileId,
+                    'import_run_id' => $runId,
+                    'media_type' => $uploaded->getClientMimeType(),
+                    'sha256' => $stored['sha256'],
+                    'contents' => null,
+                    'storage_disk' => $stored['disk'],
+                    'storage_path' => $stored['path'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                ProcessImportWorkbook::dispatch($organizationId, $fileId, $runId)->onQueue('imports');
+                DB::table('import_runs')->where('id', $runId)->update([
+                    'processing_state' => 'queued',
+                    'queued_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                return [
+                    'already_imported' => false,
+                    'duplicate_upload' => false,
+                    'file_id' => $fileId,
+                    'run_id' => $runId,
+                    'revision' => $revision,
+                    'state' => 'queued',
+                    'correlation_id' => $correlationId,
+                    'counts' => ['source' => 0, 'accepted' => 0, 'duplicates' => 0, 'rejected' => 0],
+                ];
+            }, 3);
+        } catch (\Throwable $exception) {
+            if ($privateOriginal !== null) {
+                $contentStorage->deletePrivateOriginal($privateOriginal['disk'], $privateOriginal['path']);
             }
-
-            foreach ($overrides as $role => $label) {
-                if (is_string($label)) {
-                    $this->storeColumnMapping($organizationId, (string) $role, $label, $userId, $now);
-                }
-            }
-
-            return [
-                'already_imported' => false,
-                'resumed' => false,
-                'file_id' => $fileId,
-                'run_id' => $runId,
-                'sheet_ids' => $sheetIds,
-                'revision' => $revision,
-                'counts' => ['accepted' => 0, 'duplicates' => 0, 'rejected' => 0],
-            ];
-        }, 3);
-
-        if (! $result['already_imported']) {
-            $audit->record($request->user(), 'import.started', 'import_file', $result['file_id'], [
-                'status' => 'importing',
-            ]);
+            throw $exception;
         }
 
-        return $this->success($result);
+        if (! $result['duplicate_upload']) {
+            $audit->record($request->user(), 'import.started', 'import_file', $result['file_id'], ['status' => $result['state']]);
+        }
+
+        return $this->success($result, $result['already_imported'] ? 200 : 202);
     }
 
-    public function appendChunk(
-        Request $request,
-        string $organization,
-        string $importFile,
-        string $run,
-        string $sheet,
-        ImportIngestionService $ingestion,
-    ): JsonResponse {
-        $validated = $request->validate([
-            'chunk_index' => ['required', 'integer', 'min:0', 'max:1000000'],
-            'rows' => ['required', 'array', 'min:1', 'max:500'],
-            'rows.*.source_row_number' => ['required', 'integer', 'min:1'],
-            'rows.*.values' => ['required', 'array', 'max:512'],
-            'rows.*.dashboard_record' => ['sometimes', 'nullable', 'array'],
-            'column_overrides' => ['sometimes', 'array'],
-        ]);
-
-        return $this->success($ingestion->ingestChunk(
-            $this->context->requireId(),
-            $importFile,
-            $run,
-            $sheet,
-            (int) $validated['chunk_index'],
-            $validated['rows'],
-            $validated['column_overrides'] ?? [],
-        ));
-    }
-
-    public function publish(Request $request, string $organization, string $importFile, string $run, AuditLogService $audit): JsonResponse
+    public function jobs(string $organization, AuthorizationService $authorization, Request $request): JsonResponse
     {
+        abort_unless($authorization->hasPermission($request->user(), 'imports.manage'), 403);
+        $organizationId = $this->context->requireId();
+        $runs = DB::table('import_runs as runs')->join('import_files as files', function ($join): void {
+            $join->on('files.id', '=', 'runs.import_file_id')->on('files.organization_id', '=', 'runs.organization_id');
+        })->where('runs.organization_id', $organizationId)->orderByDesc('runs.created_at')->limit(30)
+            ->get(['runs.id', 'runs.import_file_id', 'runs.revision', 'runs.report_date', 'runs.processing_state',
+                'runs.processing_error_code', 'runs.processing_error', 'runs.processed_source_rows', 'runs.total_source_rows',
+                'runs.source_rows_count', 'runs.accepted_rows_count', 'runs.duplicate_rows_count', 'runs.rejected_rows_count',
+                'runs.processing_metrics', 'runs.processing_completed_at', 'runs.created_at', 'files.original_name']);
+
+        return $this->success(['jobs' => $runs->map(static fn ($run): array => [
+            'run_id' => (string) $run->id,
+            'file_id' => (string) $run->import_file_id,
+            'revision' => (int) $run->revision,
+            'name' => (string) $run->original_name,
+            'report_date' => $run->report_date,
+            'state' => (string) $run->processing_state,
+            'error_code' => $run->processing_error_code,
+            'error' => $run->processing_error,
+            'processed_rows' => (int) $run->processed_source_rows,
+            'total_rows' => $run->total_source_rows === null ? null : (int) $run->total_source_rows,
+            'counts' => ['source' => (int) $run->source_rows_count, 'accepted' => (int) $run->accepted_rows_count,
+                'duplicates' => (int) $run->duplicate_rows_count, 'rejected' => (int) $run->rejected_rows_count],
+            'metrics' => is_string($run->processing_metrics) ? json_decode($run->processing_metrics, true) : $run->processing_metrics,
+            'created_at' => $run->created_at,
+            'completed_at' => $run->processing_completed_at,
+        ])->all()]);
+    }
+
+    public function retry(Request $request, string $organization, string $importFile, string $run): JsonResponse
+    {
+        abort_unless(config('queue.default') === 'database' && ! (bool) config('queue.connections.database.after_commit', false), 503,
+            'Workbook imports require the transactional database queue connection.');
         $organizationId = $this->context->requireId();
         $result = DB::transaction(function () use ($organizationId, $importFile, $run): array {
-            $importRun = DB::table('import_runs')
-                ->where('id', $run)->where('import_file_id', $importFile)->where('organization_id', $organizationId)
-                ->lockForUpdate()->first();
-            abort_unless($importRun && $importRun->status === 'importing', 409, 'This import run cannot be published.');
-
-            $incomplete = DB::table('import_chunks')->where('import_run_id', $run)->where('organization_id', $organizationId)
-                ->where('status', '!=', 'completed')->exists();
-            abort_if($incomplete, 409, 'Some import chunks are incomplete.');
-            abort_if((int) $importRun->accepted_rows_count === 0, 422, 'The workbook has no acceptable shipment rows.');
+            $file = DB::table('import_files')->where('id', $importFile)->where('organization_id', $organizationId)->lockForUpdate()->first();
+            abort_unless($file, 404, 'Import file not found.');
+            $importRun = DB::table('import_runs')->where('id', $run)->where('import_file_id', $importFile)
+                ->where('organization_id', $organizationId)->lockForUpdate()->first();
+            abort_unless($importRun && $importRun->processing_state === 'failed', 409, 'Only a failed import can be retried.');
+            $content = DB::table('import_file_contents')->where('import_run_id', $run)->where('organization_id', $organizationId)->first();
+            abort_unless($content, 409, 'The original workbook reference is missing.');
+            $contentStorage = app(ImportFileContentStorage::class);
+            $resolved = $contentStorage->resolveForProcessing($content);
+            if ($resolved['temporary'] && is_file($resolved['path'])) {
+                @unlink($resolved['path']);
+            }
 
             $now = now();
-            DB::table('import_runs')->where('id', $run)->update([
-                'status' => 'published',
-                'finished_at' => $now,
-                'published_at' => $now,
+            DB::table('import_runs')->where('id', $run)->where('organization_id', $organizationId)->update([
+                'processing_state' => 'queued',
+                'processing_error_code' => null,
+                'processing_error' => null,
+                'queued_at' => $now,
+                'finished_at' => null,
+                'finalizing_at' => null,
+                'processing_completed_at' => null,
                 'updated_at' => $now,
             ]);
-            DB::table('import_files')->where('id', $importFile)->where('organization_id', $organizationId)->update([
-                'active_run_id' => $run,
-                'archived_at' => null,
-                'updated_at' => $now,
-            ]);
+            ProcessImportWorkbook::dispatch($organizationId, $importFile, $run)->onQueue('imports');
 
-            return [
-                'file_id' => $importFile,
-                'run_id' => $run,
-                'revision' => (int) $importRun->revision,
-                'counts' => [
-                    'source' => (int) $importRun->source_rows_count,
-                    'accepted' => (int) $importRun->accepted_rows_count,
-                    'duplicates' => (int) $importRun->duplicate_rows_count,
-                    'rejected' => (int) $importRun->rejected_rows_count,
-                    'issues' => (int) $importRun->issues_count,
-                ],
-            ];
+            return ['file_id' => $importFile, 'run_id' => $run, 'state' => 'queued'];
         }, 3);
 
-        $audit->record($request->user(), 'import.published', 'import_file', $importFile, [
-            'status' => 'published',
-        ]);
-
-        return $this->success($result);
+        return $this->success($result, 202);
     }
-
     public function updateDate(Request $request, string $organization, string $importFile, AuditLogService $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -678,6 +656,7 @@ class ImportController extends Controller
         $sourceColumnNumber = (int) DB::table('column_mappings')->where('organization_id', $organizationId)
             ->where('mapping_version', 1)->max('source_column_number') + 1;
         DB::table('column_mappings')->insert([
+            'id' => (string) Str::ulid(),
             'organization_id' => $organizationId,
             'mapping_version' => 1,
             'source_column_number' => $sourceColumnNumber,
