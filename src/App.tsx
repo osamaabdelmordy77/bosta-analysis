@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   UploadedFile,
   ShipmentRecord,
@@ -11,13 +11,13 @@ import {
   ColumnMapping,
 } from './types';
 import { setupChartJS } from './utils/chartSetup';
-import { processExcelFile } from './services/excelService';
 import { BackendConnectionStatus, checkBackendConnection } from './services/backend';
 import {
   archiveAllImports,
   archiveImport,
   AuthUser,
   ApiError,
+  getImportJobs,
   getAllShipments,
   getCurrentUser,
   getImportFiles,
@@ -25,12 +25,12 @@ import {
   getOrganizations,
   login,
   logout,
+  ImportJob,
   OrganizationOption,
-  publishWorkbookImport,
+  retryImportRun,
   saveOrganizationSetting,
-  startWorkbookImport,
+  uploadWorkbookFile,
   updateImportDate,
-  uploadWorkbookRows,
 } from './services/api';
 import { migrateAndRemoveLegacyIndexedDb } from './services/legacyIndexedDbMigration';
 import { filterShipments, computeAggregations } from './utils/analytics';
@@ -51,7 +51,7 @@ import { FileManagerModal } from './components/FileManagerModal';
 import { DuplicateExplainerModal } from './components/DuplicateExplainerModal';
 import { LoginPanel } from './components/LoginPanel';
 
-import { Upload, FileSpreadsheet, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 
 // Initialize ChartJS plugins & defaults
 setupChartJS();
@@ -70,8 +70,39 @@ const DEFAULT_FILTERS: FilterState = {
   dateTo: '',
 };
 
+function finishClientImportMeasurement(job: ImportJob): void {
+  const key = `bosta-import-timing:${job.run_id}`;
+  const raw = localStorage.getItem(key);
+  if (!raw) return;
+  localStorage.removeItem(key);
+  try {
+    const timing = JSON.parse(raw) as { correlation_id: string; started_at_ms: number; file_bytes: number; upload_elapsed_ms: number };
+    const totalMs = Math.max(0, Date.now() - timing.started_at_ms);
+    const publishedAt = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
+    console.info('[import-end-to-end]', JSON.stringify({
+      correlation_id: timing.correlation_id,
+      run_id: job.run_id,
+      file_bytes: timing.file_bytes,
+      upload_elapsed_ms: +timing.upload_elapsed_ms.toFixed(3),
+      result_load_and_render_ms: Math.max(0, Date.now() - publishedAt),
+      total_ms: totalMs,
+      counts: job.counts,
+      worker_metrics: job.metrics || null,
+    }));
+  } catch {
+    // A stale local timing entry does not affect import state or results.
+  }
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
 export default function App() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [importJobs, setImportJobs] = useState<ImportJob[]>([]);
+  const importJobsRef = useRef<ImportJob[]>([]);
+  const [jobPollVersion, setJobPollVersion] = useState(0);
   const [shipments, setShipments] = useState<ShipmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [backendStatus, setBackendStatus] = useState<BackendConnectionStatus | null>(null);
@@ -145,10 +176,11 @@ export default function App() {
   }, []);
 
   const reloadOrganizationData = useCallback(async (organizationSlug: string) => {
-    const [importData, serverShipments, settings] = await Promise.all([
+    const [importData, serverShipments, settings, jobs] = await Promise.all([
       getImportFiles(organizationSlug),
       getAllShipments(organizationSlug),
       getOrganizationSettings(organizationSlug),
+      getImportJobs(organizationSlug),
     ]);
     setFiles(importData.files);
     setShipments(serverShipments);
@@ -156,6 +188,8 @@ export default function App() {
     setHubLabels(importData.hubLabels);
     setHubBasis(settings.hubBasis || importData.hubLabels.find((label) => /assigned/i.test(label)) || importData.hubLabels[0] || 'Assigned Hub');
     setColumnOverrides((settings.columnOverrides || {}) as Partial<ColumnMapping>);
+    importJobsRef.current = jobs;
+    setImportJobs(jobs);
   }, []);
 
   // Import legacy browser records to MySQL and delete the old database only after count verification.
@@ -187,6 +221,39 @@ export default function App() {
     return () => { active = false; };
   }, [activeOrganization, reloadOrganizationData]);
 
+  useEffect(() => {
+    if (!activeOrganization) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const jobs = await getImportJobs(activeOrganization.slug);
+        if (!active) return;
+        const previous = new Map(importJobsRef.current.map((job) => [job.run_id, job.state]));
+        const completedNow = jobs.some((job) => job.state === 'completed'
+          && ['queued', 'parsing', 'importing', 'finalizing'].includes(previous.get(job.run_id) || ''));
+        const completedWithTiming = jobs.filter((job) => job.state === 'completed'
+          && localStorage.getItem(`bosta-import-timing:${job.run_id}`) !== null);
+        importJobsRef.current = jobs;
+        setImportJobs(jobs);
+        if (completedNow || completedWithTiming.length > 0) {
+          await reloadOrganizationData(activeOrganization.slug);
+          await nextFrame();
+          for (const job of completedWithTiming) finishClientImportMeasurement(job);
+        }
+        const hasActiveJobs = jobs.some((job) => ['queued', 'parsing', 'importing', 'finalizing'].includes(job.state));
+        timer = setTimeout(poll, hasActiveJobs ? 1800 : 10000);
+      } catch {
+        if (active) timer = setTimeout(poll, 10000);
+      }
+    };
+    void poll();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeOrganization, reloadOrganizationData, jobPollVersion]);
+
   const handleLogin = async (email: string, password: string) => {
     setAuthSubmitting(true);
     setAuthError(null);
@@ -211,6 +278,8 @@ export default function App() {
     setOrganizations([]);
     setActiveOrganization(null);
     setFiles([]);
+    importJobsRef.current = [];
+    setImportJobs([]);
     setShipments([]);
     setFilters(DEFAULT_FILTERS);
     setAuthError(null);
@@ -241,59 +310,46 @@ export default function App() {
   }, [activeOrganization, columnOverrides]);
 
   // Process and ingest uploaded files
-  const handleProcessFiles = async (pending: PendingFile[]) => {
+  const handleProcessFiles = async (
+    pending: PendingFile[],
+    onProgress: (id: string, loaded: number, total: number) => void,
+  ) => {
     if (!activeOrganization) throw new Error('Select an organization before importing workbooks.');
-    const processingErrors: string[] = [];
     for (const p of pending) {
-      try {
-        const parsed = await processExcelFile({
-          file: p.file,
-          fileId: p.name,
-          shipmentDate: p.detectedDate,
-          overrides: columnOverrides as Record<string, string>,
-        });
-        const started = await startWorkbookImport(
-          activeOrganization.slug,
-          p.file,
-          p.detectedDate,
-          p.isManualDate,
-          parsed,
-          columnOverrides as Record<string, string>,
-        );
-
-        if (!started.alreadyImported) {
-          for (const sheet of parsed.sourceSheets) {
-            const sheetId = started.sheetIds[sheet.index];
-            if (!sheetId) throw new Error(`The server did not register worksheet ${sheet.name}.`);
-            let chunkIndex = 0;
-            while (sheet.rows.length > 0) {
-              const rows = sheet.rows.splice(0, 200);
-              await uploadWorkbookRows(
-                activeOrganization.slug,
-                started.fileId,
-                started.runId,
-                sheetId,
-                chunkIndex,
-                rows,
-                columnOverrides as Record<string, string>,
-              );
-              chunkIndex++;
-            }
-          }
-          await publishWorkbookImport(activeOrganization.slug, started.fileId, started.runId);
-        }
-      } catch (err) {
-        console.error(`Failed importing file ${p.name}:`, err);
-        processingErrors.push(`${p.name}: ${err instanceof Error ? err.message : String(err)}`);
+      const started = await uploadWorkbookFile(
+        activeOrganization.slug,
+        p.file,
+        p.detectedDate,
+        p.isManualDate,
+        columnOverrides as Record<string, string>,
+        (loaded, total) => onProgress(p.id, loaded, total),
+      );
+      localStorage.setItem(`bosta-import-timing:${started.runId}`, JSON.stringify({
+        correlation_id: started.correlationId,
+        started_at_ms: Date.now() - started.uploadElapsedMs,
+        file_bytes: p.file.size,
+        upload_elapsed_ms: started.uploadElapsedMs,
+      }));
+      if (started.alreadyImported) {
+        await reloadOrganizationData(activeOrganization.slug);
+        await nextFrame();
+        const completedJob = importJobsRef.current.find((job) => job.run_id === started.runId);
+        if (completedJob) finishClientImportMeasurement(completedJob);
       }
     }
+    const jobs = await getImportJobs(activeOrganization.slug);
+    importJobsRef.current = jobs;
+    setImportJobs(jobs);
+    setJobPollVersion((version) => version + 1);
+  };
 
-    if (processingErrors.length > 0) {
-      await reloadOrganizationData(activeOrganization.slug);
-      throw new Error(`Could not process the following files:\n${processingErrors.join('\n')}`);
-    }
-
-    await reloadOrganizationData(activeOrganization.slug);
+  const handleRetryImport = async (job: ImportJob) => {
+    if (!activeOrganization) return;
+    await retryImportRun(activeOrganization.slug, job.file_id, job.run_id);
+    const jobs = await getImportJobs(activeOrganization.slug);
+    importJobsRef.current = jobs;
+    setImportJobs(jobs);
+    setJobPollVersion((version) => version + 1);
   };
 
   // Delete a specific file
@@ -426,6 +482,10 @@ export default function App() {
   }, []);
 
   const existingFilenames = useMemo(() => new Set(files.map((f) => f.name)), [files]);
+  const visibleImportJobs = importJobs.filter((job) => {
+    if (job.state !== 'completed') return true;
+    return Date.now() - new Date(job.created_at).getTime() < 5 * 60 * 1000;
+  }).slice(0, 6);
 
   if (!authChecked || isLoading) {
     return (
@@ -474,6 +534,47 @@ export default function App() {
         onClearAll={() => setIsClearConfirmOpen(true)}
       />
 
+      {visibleImportJobs.length > 0 && (
+        <section aria-label="Import status" className="mx-auto mt-3 max-w-7xl space-y-2">
+          {visibleImportJobs.map((job) => {
+            const running = ['uploaded', 'queued', 'parsing', 'importing', 'finalizing'].includes(job.state);
+            const hasTotal = job.total_rows !== null && job.total_rows > 0;
+            const progress = hasTotal ? Math.min(100, Math.round((job.processed_rows / job.total_rows!) * 100)) : null;
+            return (
+              <div key={job.run_id} className={`rounded-lg border px-4 py-3 text-sm ${job.state === 'failed' ? 'border-rose-500/40 bg-rose-500/10 text-rose-100' : job.state === 'completed' ? 'border-emerald-500/30 bg-emerald-500/5 text-slate-200' : 'border-sky-500/40 bg-sky-500/10 text-sky-100'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{job.name}</span>
+                      <span className="rounded bg-black/20 px-2 py-0.5 text-xs">{job.state}</span>
+                    </div>
+                    {job.state === 'failed' ? (
+                      <p className="mb-0 mt-1 text-xs">{job.error || 'The workbook could not be processed.'}</p>
+                    ) : (
+                      <p className="mb-0 mt-1 text-xs text-slate-300">
+                        {running
+                          ? `${job.processed_rows.toLocaleString()} rows processed${hasTotal ? ` of ${job.total_rows!.toLocaleString()}` : ''}`
+                          : `${job.counts.accepted.toLocaleString()} accepted · ${job.counts.duplicates.toLocaleString()} duplicates · ${job.counts.rejected.toLocaleString()} rejected`}
+                      </p>
+                    )}
+                    {progress !== null && running && (
+                      <div className="mt-2 h-1.5 max-w-xl overflow-hidden rounded bg-slate-700">
+                        <div className="h-full bg-sky-400 transition-all" style={{ width: `${progress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                  {job.state === 'failed' && (
+                    <button type="button" className="btn sm" onClick={() => void handleRetryImport(job)}>
+                      <RefreshCw className="h-3.5 w-3.5" /> Retry safely
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       {(loadError || migrationMessage) && (
         <div className={`mx-auto mt-3 max-w-7xl rounded-lg border px-4 py-3 text-sm ${loadError ? 'border-rose-500/40 bg-rose-500/10 text-rose-200' : 'border-sky-500/40 bg-sky-500/10 text-sky-100'}`} role={loadError ? 'alert' : 'status'}>
           {loadError || migrationMessage}
@@ -487,9 +588,9 @@ export default function App() {
           <h2>Upload your daily shipment Excel files</h2>
           <p>
             Drag &amp; drop one daily report, multiple daily files, or an entire month&apos;s data at once (
-            <b>.xlsx</b> or <b>.xls</b>). Dates are automatically extracted from filenames (e.g.{' '}
-            <code>Shipment_2026-07-01.xlsx</code>). All files are processed via Web Workers and stored securely
-            in this organization&apos;s MySQL database, including the original workbook and its source rows.
+            <b>.xlsx</b>, <b>.xls</b>, or <b>.csv</b>). Dates are automatically extracted from filenames (e.g.{' '}
+            <code>Shipment_2026-07-01.xlsx</code>). Files are processed by a Laravel queue worker and stored securely
+            in this organization&apos;s MySQL database, including the private original workbook and all source rows.
           </p>
           <button
             type="button"

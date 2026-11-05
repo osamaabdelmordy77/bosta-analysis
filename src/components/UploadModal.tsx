@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
-import { extractDateFromFilename, extractDateFromSheetNames } from '../utils/dateExtractor';
-import { Upload, X, AlertCircle, CheckCircle2, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
+import { extractDateFromFilename } from '../utils/dateExtractor';
+import { Upload, X, AlertCircle, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
 
 export interface PendingFile {
   id: string;
@@ -10,15 +9,16 @@ export interface PendingFile {
   size: number;
   detectedDate: string; // YYYY-MM-DD
   isManualDate: boolean;
-  status: 'idle' | 'reading' | 'parsing' | 'done' | 'error';
+  status: 'idle' | 'uploading' | 'done' | 'error';
   error?: string;
   recordCount?: number;
+  uploadProgress?: number;
 }
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProcessFiles: (files: PendingFile[]) => Promise<void>;
+  onProcessFiles: (files: PendingFile[], onProgress: (id: string, loaded: number, total: number) => void) => Promise<void>;
   existingFilenames: Set<string>;
 }
 
@@ -45,19 +45,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     }
 
     setProcessingError(null);
-    const newPending: PendingFile[] = await Promise.all(fileArray.map(async (file) => {
+    const newPending: PendingFile[] = fileArray.map((file) => {
       const detectedFromFilename = extractDateFromFilename(file.name);
-      let detectedFromSheet: string | null = null;
-      if (!detectedFromFilename) {
-        try {
-          const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', bookSheets: true });
-          detectedFromSheet = extractDateFromSheetNames(workbook.SheetNames, new Date().getFullYear());
-        } catch {
-          // Keep the existing fallback for unreadable workbooks.
-        }
-      }
-      const detected = detectedFromFilename || detectedFromSheet;
       const today = new Date().toISOString().slice(0, 10);
+      const detected = detectedFromFilename;
       return {
         id: `${file.name}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         file,
@@ -67,7 +58,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         isManualDate: !detected,
         status: 'idle',
       };
-    }));
+    });
 
     setPendingFiles((prev) => [...prev, ...newPending]);
   };
@@ -87,7 +78,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     setIsProcessing(true);
     setProcessingError(null);
     try {
-      await onProcessFiles(pendingFiles);
+      await onProcessFiles(pendingFiles, (id, loaded, total) => {
+        const uploadProgress = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : undefined;
+        setPendingFiles((prev) => prev.map((file) => file.id === id ? { ...file, status: 'uploading', uploadProgress } : file));
+      });
       setPendingFiles([]);
       onClose();
     } catch (err) {
@@ -168,8 +162,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               Select or Drag &amp; Drop Excel (.xlsx, .xls) or CSV (.csv) Files
             </h4>
             <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
-              Select multiple files simultaneously. Shipment date is extracted from the filename or worksheet name
-              (e.g. <code>Shipment_2026-07-01.xlsx</code> or <code>1-8</code>).
+              Select multiple files simultaneously. Shipment date is extracted from the filename when available; otherwise choose it here.
             </p>
             <button type="button" className="btn pri sm pointer-events-none">
               Browse Excel Files
@@ -216,6 +209,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                             )}
                           </div>
                           <span className="text-slate-400">{formatSize(item.size)}</span>
+                          {item.status === 'uploading' && item.uploadProgress !== undefined && (
+                            <div className="mt-1 flex items-center gap-2 text-[10px] text-sky-300">
+                              <span>Uploading {item.uploadProgress}%</span>
+                              <div className="h-1 w-24 overflow-hidden rounded bg-slate-700">
+                                <div className="h-full bg-sky-400" style={{ width: `${item.uploadProgress}%` }} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -280,13 +281,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             {isProcessing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Processing with Web Worker…</span>
+                <span>Uploading original files…</span>
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4" />
                 <span>
-                  Process &amp; Ingest {pendingFiles.length > 0 ? `(${pendingFiles.length})` : ''}
+                  Upload &amp; Queue {pendingFiles.length > 0 ? `(${pendingFiles.length})` : ''}
                 </span>
               </>
             )}

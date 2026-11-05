@@ -9,7 +9,9 @@
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10.1"
+        "laravel/tinker": "^2.10.1",
+        "openspout/openspout": "^4.24",
+        "phpoffice/phpspreadsheet": "^5.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -46,6 +48,7 @@
             "@php artisan config:clear --ansi",
             "@php artisan test --env=testing"
         ],
+        "queue:imports": "@php artisan queue:work database --queue=imports --sleep=1 --tries=3 --timeout=3600 --max-jobs=100",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

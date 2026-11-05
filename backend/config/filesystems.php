@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        'imports_private' => [
+            'driver' => 'local',
+            'root' => env('IMPORT_FILE_STORAGE_PATH', storage_path('app/private/imports')),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Imports\ImportBenchmarkMetrics;
 use App\Models\AuditLog;
 use App\Models\Hub;
 use App\Models\Role;
@@ -14,6 +15,7 @@ use App\Tenancy\OrganizationContext;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -23,10 +25,17 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(OrganizationContext::class);
+        $this->app->scoped(ImportBenchmarkMetrics::class);
     }
 
     public function boot(): void
     {
+        if (config('import_benchmark.enabled')) {
+            DB::listen(function ($query): void {
+                app(ImportBenchmarkMetrics::class)->recordQuery((float) $query->time);
+            });
+        }
+
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(Hub::class, HubPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
