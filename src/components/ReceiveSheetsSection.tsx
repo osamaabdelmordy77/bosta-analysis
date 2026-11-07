@@ -3,9 +3,11 @@ import { RotateCcw } from 'lucide-react';
 import { ShipmentRecord } from '../types';
 import { parseShipmentDateTime, toLocalDateInputValue } from '../utils/receiveDateTime';
 import { ShipmentExplorerSection } from './ShipmentExplorerSection';
+import { ReceiveVolumeSection } from './ReceiveVolumeSection';
 
 interface ReceiveSheetsSectionProps {
   shipments: ShipmentRecord[];
+  organizationSlug: string;
 }
 
 interface ReceiveFilters {
@@ -34,7 +36,8 @@ function getUniqueValues(shipments: ShipmentRecord[], read: (shipment: ShipmentR
   return [...new Set(shipments.map(read).filter((value): value is string => Boolean(value?.trim())))].sort((a, b) => a.localeCompare(b));
 }
 
-export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ shipments }) => {
+export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ shipments, organizationSlug }) => {
+  const [tab, setTab] = useState<'records' | 'volume'>('records');
   const [filters, setFilters] = useState<ReceiveFilters>(EMPTY_FILTERS);
   const options = useMemo(() => ({
     types: getUniqueValues(shipments, (shipment) => shipment.shipType),
@@ -88,6 +91,16 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
 
   return (
     <div className="receive-sheets">
+      <div className="receive-tabs" role="tablist" aria-label="Receive views" onKeyDown={(event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 'records' : event.key === 'End' ? 'volume' : tab === 'records' ? 'volume' : 'records';
+        setTab(next);
+        document.getElementById(`receive-${next}-tab`)?.focus();
+      }}>
+        <button id="receive-records-tab" type="button" role="tab" tabIndex={tab === 'records' ? 0 : -1} aria-selected={tab === 'records'} aria-controls="receive-tab-panel" onClick={() => setTab('records')}>Records</button>
+        <button id="receive-volume-tab" type="button" role="tab" tabIndex={tab === 'volume' ? 0 : -1} aria-selected={tab === 'volume'} aria-controls="receive-tab-panel" onClick={() => setTab('volume')}>Volume</button>
+      </div>
       <section className="receive-filter-panel" aria-label="Receive sheet filters">
         <div className="receive-filter-heading">
           <div>
@@ -127,7 +140,9 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
         </div>
       </section>
 
-      <ShipmentExplorerSection shipments={filteredShipments} showReceiveFields />
+      <div id="receive-tab-panel" role="tabpanel" aria-labelledby={tab === 'records' ? 'receive-records-tab' : 'receive-volume-tab'}>
+        {tab === 'records' ? <ShipmentExplorerSection shipments={filteredShipments} showReceiveFields /> : <ReceiveVolumeSection shipments={filteredShipments} organizationSlug={organizationSlug} />}
+      </div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { UploadedFile, ShipmentRecord } from '../types';
+import type { VolumeSummary } from '../utils/receiveVolume';
 import {
   beginImportBenchmarkRequest,
   finishImportBenchmarkRequest,
@@ -145,6 +146,23 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 const organizationPath = (slug: string) => `/api/organizations/${encodeURIComponent(slug)}`;
+
+export async function downloadReceiveVolumePivot(slug: string, rows: VolumeSummary[]): Promise<void> {
+  const response = await fetch(`${organizationPath(slug)}/receive/volume/export`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': await csrfToken() },
+    body: JSON.stringify({ rows }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new ApiError(payload.message || `Export failed with HTTP ${response.status}.`, response.status);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url; link.download = 'receive-volume-comparisons-pivots.xlsx';
+  document.body.appendChild(link); link.click(); link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 export async function login(email: string, password: string): Promise<AuthUser> {
   const result = await request<{ user: AuthUser }>('/api/auth/login', {

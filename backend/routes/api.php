@@ -8,6 +8,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\LegacyImportController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\ReceiveVolumeExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function (): void {
@@ -53,6 +54,7 @@ Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group
             Route::get('/imports', [ImportController::class, 'index']);
             Route::get('/imports/jobs', [ImportController::class, 'jobs'])->middleware('permission:imports.manage');
             Route::get('/imports/shipments', [ImportController::class, 'shipments']);
+            Route::post('/receive/volume/export', ReceiveVolumeExportController::class)->middleware('throttle:10,1');
             Route::get('/settings', [ImportController::class, 'settings']);
             Route::put('/settings/{key}', [ImportController::class, 'saveSetting'])->whereIn('key', ['hubBasis', 'columnOverrides']);
             Route::post('/imports', [ImportController::class, 'store'])->middleware('permission:imports.manage');

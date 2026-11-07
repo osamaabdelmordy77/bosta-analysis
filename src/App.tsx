@@ -46,6 +46,7 @@ import { KPICards } from './components/KPICards';
 import { AnalyticsCardsSection } from './components/AnalyticsCardsSection';
 import { ShipmentExplorerSection } from './components/ShipmentExplorerSection';
 import { ReceiveSheetsSection } from './components/ReceiveSheetsSection';
+import { SortSheetsSection } from './components/SortSheetsSection';
 import { ProfileSection } from './components/ProfileSection';
 import { UploadModal, PendingFile } from './components/UploadModal';
 import { FileManagerModal } from './components/FileManagerModal';
@@ -1134,12 +1135,12 @@ export default function App() {
             </section>
           ) : (
             <>
-          {filteredShipments.length > 0 ? (
+          {filteredShipments.length > 0 || activePage === 'Sort' ? (
             <>
           {activePage === 'Receive' ? (
-            <ReceiveSheetsSection shipments={shipments} />
+            <ReceiveSheetsSection shipments={shipments} organizationSlug={activeOrganization.slug} />
           ) : (
-            <>
+            <SortSheetsSection enabled={activePage === 'Sort'} shipments={filteredShipments}>
           <KPICards current={currentAgg} base={baseAgg} />
           <AnalyticsCardsSection
             shipments={shipments}
@@ -1164,7 +1165,7 @@ export default function App() {
               onApplyMapping={handleApplyMapping}
             />
           )}
-            </>
+            </SortSheetsSection>
           )}
             </>
           ) : (
