@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { extractDateFromFilename } from '../utils/dateExtractor';
 import { Upload, X, AlertCircle, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
+import { ModalDialog } from './ModalDialog';
 
 export interface PendingFile {
   id: string;
@@ -99,15 +100,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '820px' }}>
+    <ModalDialog labelledBy="upload-modal-title" maxWidth={820} onClose={onClose} dismissable={!isProcessing}>
         <div className="modal-header">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
               <Upload className="w-4 h-4" />
             </div>
             <div>
-              <h3>Upload Daily Shipment Reports</h3>
+              <h3 id="upload-modal-title">Upload Daily Shipment Reports</h3>
               <p className="text-xs text-slate-400 m-0">
                 Upload single daily reports, full months, or multi-month historical archives.
               </p>
@@ -115,13 +115,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           </div>
           <button
             type="button"
-            className="text-slate-400 hover:text-white p-1"
+            className="modal-close icon-button"
             onClick={onClose}
             disabled={isProcessing}
+            aria-label="Close upload dialog"
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
+      </div>
 
         <div className="modal-body">
           {/* Drop Zone */}
@@ -131,6 +132,15 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 ? 'border-sky-400 bg-sky-950/20'
                 : 'border-[#263760] bg-[#0c1533] hover:border-[#38bdf888]'
             }`}
+            role="button"
+            tabIndex={0}
+            aria-label="Choose shipment report files or drop them here"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             onDragOver={(e) => {
               e.preventDefault();
               setIsDragging(true);
@@ -164,9 +174,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
               Select multiple files simultaneously. Shipment date is extracted from the filename when available; otherwise choose it here.
             </p>
-            <button type="button" className="btn pri sm pointer-events-none">
+            <span className="btn pri sm pointer-events-none" aria-hidden="true">
               Browse Excel Files
-            </button>
+            </span>
           </div>
 
           {/* Pending Files List */}
@@ -215,7 +225,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                               <div className="h-1 w-24 overflow-hidden rounded bg-slate-700">
                                 <div className="h-full bg-sky-400" style={{ width: `${item.uploadProgress}%` }} />
                               </div>
-                            </div>
+                              </div>
                           )}
                         </div>
                       </div>
@@ -293,7 +303,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             )}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalDialog>
   );
 };

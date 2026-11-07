@@ -13,24 +13,29 @@ $app = require $backend.'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 $inputPath = isset($argv[1]) ? realpath($argv[1]) : false;
+$realRunId = $argv[2] ?? null;
+$realMode = $realRunId !== null;
 $allowedRoot = realpath($backend.'/.local/import-benchmark');
 $slug = (string) (getenv('IMPORT_BENCHMARK_ORGANIZATION') ?: 'phase3-benchmark');
 $database = DB::connection()->getDatabaseName();
-if (! config('import_benchmark.enabled') || $database !== (string) config('import_benchmark.database')
-    || ! is_string($inputPath) || ! is_string($allowedRoot)
-    || ! str_starts_with(strtolower($inputPath), strtolower($allowedRoot.DIRECTORY_SEPARATOR))) {
-    fwrite(STDERR, "Refusing source verification: use the explicitly enabled benchmark database and a generated fixture under backend/.local/import-benchmark.\n");
+if (! is_string($inputPath) || ($realMode
+    ? (! app()->environment('local') || $database !== 'bosta_analysis_local'
+        || ! is_string($realRunId) || preg_match('/\A[0-9A-HJKMNP-TV-Z]{26}\z/', $realRunId) !== 1)
+    : (! config('import_benchmark.enabled') || $database !== (string) config('import_benchmark.database')
+        || ! is_string($allowedRoot)
+        || ! str_starts_with(strtolower($inputPath), strtolower($allowedRoot.DIRECTORY_SEPARATOR))))) {
+    fwrite(STDERR, "Refusing source verification: provide an explicit local real run ID, or use the enabled benchmark database and generated fixture.\n");
     exit(2);
 }
 
-$run = DB::table('organizations as organization')
+$runQuery = DB::table('organizations as organization')
     ->join('import_files as file', 'file.organization_id', '=', 'organization.id')
     ->join('import_runs as run', 'run.import_file_id', '=', 'file.id')
     ->join('import_file_contents as content', 'content.import_run_id', '=', 'run.id')
-    ->where('organization.slug', $slug)
     ->where('run.processing_state', 'completed')
     ->where('run.status', 'published')
-    ->orderByDesc('run.created_at')
+    ->orderByDesc('run.created_at');
+$run = ($realMode ? $runQuery->where('run.id', $realRunId) : $runQuery->where('organization.slug', $slug))
     ->first([
         'organization.id as organization_id', 'file.id as file_id', 'file.original_name', 'file.sha256 as file_sha256',
         'run.id as run_id', 'run.processing_options', 'run.source_rows_count', 'content.sha256 as content_sha256',
@@ -140,7 +145,9 @@ $result['all_source_values_match'] = $result['private_original_exists'] && $resu
     && $result['raw_source_value_mismatches'] === 0 && $result['source_rows_in_reader'] === $result['source_rows_in_database']
     && $result['source_rows_in_database'] === (int) $run->source_rows_count;
 $result['run_id'] = (string) $run->run_id;
-$outputPath = $backend.'/.local/import-benchmark/phase3-results/source-verification-'.$run->run_id.'.json';
+$outputPath = $realMode
+    ? $backend.'/.local/real-verification/source-verification-'.$run->run_id.'.json'
+    : $backend.'/.local/import-benchmark/phase3-results/source-verification-'.$run->run_id.'.json';
 if (! is_dir(dirname($outputPath)) && ! mkdir(dirname($outputPath), 0777, true) && ! is_dir(dirname($outputPath))) {
     throw new RuntimeException('Could not create the E-drive source verification report directory.');
 }

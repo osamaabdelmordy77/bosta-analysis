@@ -125,3 +125,31 @@ dataset comparable in size to the application database. Measure a fresh isolated
 run and original-data reads separately. Reassess actual storage/SQL throughput
 before committing to an architectural change or another numerical latency promise.
 The few-seconds objective remains open.
+
+## Real CSV batch-size follow-up — 2026-11-06
+
+The supplied CSV was read from its verified private original; its SHA-256 was
+`613cd7dc407a11803817ff08adc2c891a2bee8612c1a8a3be75c3265fabfbd39`
+(17,425,203 bytes, 16,155 source rows). Four clean imports ran on the same local
+MariaDB service as the application, in a separate `bosta_analysis_benchmark`
+schema and fresh organizations. Each run accepted all 16,155 rows with zero
+duplicates, rejections, or issues. Source verification found no row-key or
+raw-value mismatches.
+
+| Chunk and insert row limits | Worker samples | Median / slowest | SQL query-count samples | Median SQL time | Peak PHP memory |
+|---|---:|---:|---:|---:|---:|
+| 1,000 | 50.634 s, 74.085 s | 62.360 s / 74.085 s | 561, 561 | 26.128 s | 214 MiB |
+| 2,000 | 48.741 s, 59.219 s | 53.980 s / 59.219 s | 397, 397 | 22.710 s | 232 MiB |
+
+The 2,000-row setting reduced median worker time by 13.4%, median accumulated
+SQL time by 13.1%, and query count by 29.2%, with an 8.4% higher PHP peak. Median
+time through result loading was 70.978 s versus 81.428 s (12.8% lower); React
+rendering remains unmeasured. Conditions varied substantially between runs, so
+these two samples per setting are directional rather than a latency guarantee.
+The benchmark copy runs were archived through the API after verification; their
+raw rows and reports remain available in the isolated benchmark schema.
+
+Based on the repeated reduction in writes and the measured memory headroom under
+the 512 MiB CLI limit, new imports now default to 2,000 source rows and 2,000
+insert rows per batch. Existing runs retain their recorded chunk boundaries.
+This does not meet the 30-second worker target or the few-seconds objective.

@@ -52,7 +52,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -91,7 +91,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -103,7 +103,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
     datasets: [
       {
         data: pzRows.map((r) => r.n),
-        backgroundColor: '#7c9cff',
+        backgroundColor: '#6e9cc9',
         borderRadius: 3,
         maxBarThickness: 16,
       },
@@ -124,7 +124,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -163,7 +163,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -176,7 +176,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
       {
         data: data.packageSizeRows.map((r) => r.n),
         backgroundColor: data.packageSizeRows.map((_, i) => PAL[i % PAL.length]),
-        borderColor: '#0b1330',
+        borderColor: '#ffffff',
         borderWidth: 2,
       },
     ],
@@ -187,7 +187,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
     maintainAspectRatio: false,
     cutout: '62%',
     plugins: {
-      legend: { position: 'right' as const, labels: { color: '#c4cff0', boxWidth: 10 } },
+      legend: { position: 'right' as const, labels: { color: '#52677e', boxWidth: 10 } },
       centerText: { lines: [fmt(totalPkgSize), 'shipments'] },
       tooltip: {
         callbacks: {
@@ -207,7 +207,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
     datasets: [
       {
         data: laneRows.map((r) => r.n),
-        backgroundColor: '#5eead4',
+        backgroundColor: '#408274',
         borderRadius: 3,
         maxBarThickness: 18,
       },
@@ -228,7 +228,7 @@ export const GeographySection: React.FC<GeographySectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: {
         grid: { display: false },
         ticks: {

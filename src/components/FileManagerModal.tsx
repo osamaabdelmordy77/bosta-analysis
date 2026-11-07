@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UploadedFile } from '../types';
 import { FolderKanban, Trash2, Calendar, FileSpreadsheet, X, Check, Edit2 } from 'lucide-react';
+import { ModalDialog } from './ModalDialog';
 
 interface FileManagerModalProps {
   isOpen: boolean;
@@ -54,29 +55,28 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '850px' }}>
+    <ModalDialog labelledBy="file-manager-modal-title" maxWidth={850} onClose={onClose}>
         <div className="modal-header">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
               <FolderKanban className="w-4 h-4" />
             </div>
             <div>
-              <h3>Uploaded Daily Shipment Files</h3>
+              <h3 id="file-manager-modal-title">Uploaded Daily Shipment Files</h3>
               <p className="text-xs text-slate-400 m-0">
                 {files.length} file{files.length === 1 ? '' : 's'} stored in MySQL ·{' '}
                 {totalRecords.toLocaleString()} total shipments
               </p>
             </div>
           </div>
-          <button type="button" className="text-slate-400 hover:text-white p-1" onClick={onClose}>
+          <button type="button" className="modal-close icon-button" onClick={onClose} aria-label="Close file manager">
             <X className="w-5 h-5" />
           </button>
-        </div>
+      </div>
 
         <div className="modal-body">
           {/* Quick Stats Banner */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="file-manager-summary grid grid-cols-3 gap-3 mb-4">
             <div className="p-3 bg-[#0a1330] border border-[#1d2a4d] rounded-lg">
               <small className="text-slate-400 text-xs block">Total Files Uploaded</small>
               <b className="text-lg text-white font-bold">{files.length}</b>
@@ -211,7 +211,6 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
             Done
           </button>
         </div>
-      </div>
-    </div>
+    </ModalDialog>
   );
 };

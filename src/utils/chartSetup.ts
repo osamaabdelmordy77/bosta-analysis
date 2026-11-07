@@ -14,23 +14,23 @@ import {
 } from 'chart.js';
 
 export const PAL = [
-  '#4f8cff',
-  '#38bdf8',
-  '#7c9cff',
-  '#5eead4',
-  '#a5b4fc',
-  '#0ea5e9',
-  '#818cf8',
-  '#2dd4bf',
-  '#60a5fa',
-  '#c4b5fd',
-  '#f0568c',
+  '#235c9d',
+  '#4b83ba',
+  '#6e9cc9',
+  '#408274',
+  '#89a9c7',
+  '#7194b7',
+  '#a1b7cc',
+  '#5c9289',
+  '#86a3bd',
+  '#b0bfd0',
+  '#c45963',
 ];
 
-export const BLUE = '#4f8cff';
-export const LIGHT = '#38bdf8';
-export const PINK = '#f0568c';
-export const GREY = '#3a4668';
+export const BLUE = '#235c9d';
+export const LIGHT = '#4b83ba';
+export const PINK = '#c45963';
+export const GREY = '#7b8ca2';
 
 let registered = false;
 
@@ -51,10 +51,10 @@ export function setupChartJS(): void {
     Filler
   );
 
-  ChartJS.defaults.color = '#8c9abd';
+  ChartJS.defaults.color = '#60738b';
   ChartJS.defaults.font.family = '"Segoe UI", Inter, system-ui, -apple-system, Roboto, Arial, sans-serif';
   ChartJS.defaults.font.size = 11;
-  ChartJS.defaults.borderColor = '#1d2a4d';
+  ChartJS.defaults.borderColor = '#e4eaf0';
   ChartJS.defaults.animation = { duration: 250 };
 
   // Average Line Plugin
@@ -69,7 +69,7 @@ export function setupChartJS(): void {
 
       const p = sc.getPixelForValue(options.value);
       ctx.save();
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = '#7b8ca2';
       ctx.lineWidth = 1.3;
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
@@ -83,7 +83,7 @@ export function setupChartJS(): void {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#657990';
       ctx.font = '10.5px sans-serif';
       const t = `Avg ${Number(options.value).toLocaleString('en-US', { maximumFractionDigits: 1 })}`;
       if (h) {
@@ -109,7 +109,7 @@ export function setupChartJS(): void {
 
       const { ctx } = ch;
       ctx.save();
-      ctx.fillStyle = '#dfe7ff';
+      ctx.fillStyle = '#41566f';
       ctx.font = '10.5px sans-serif';
       ctx.textBaseline = 'middle';
 
@@ -138,11 +138,11 @@ export function setupChartJS(): void {
 
       ctx.save();
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#1e3551';
       ctx.font = '700 20px sans-serif';
       ctx.fillText(options.lines[0], x, y + 2);
 
-      ctx.fillStyle = '#8c9abd';
+      ctx.fillStyle = '#718198';
       ctx.font = '11px sans-serif';
       ctx.fillText(options.lines[1], x, y + 18);
       ctx.restore();

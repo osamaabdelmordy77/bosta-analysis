@@ -86,7 +86,7 @@ export const BusinessSection: React.FC<BusinessSectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -137,7 +137,7 @@ export const BusinessSection: React.FC<BusinessSectionProps> = ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: '#c4cff0', boxWidth: 10 } },
+      legend: { labels: { color: '#52677e', boxWidth: 10 } },
       tooltip: {
         callbacks: {
           label: (c: any) =>
@@ -150,7 +150,7 @@ export const BusinessSection: React.FC<BusinessSectionProps> = ({
     scales: {
       x: { grid: { display: false } },
       y: {
-        grid: { color: '#16224a' },
+        grid: { color: '#e7edf3' },
         title: { display: true, text: 'Businesses' },
         ticks: { precision: 0 },
       },

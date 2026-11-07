@@ -34,7 +34,13 @@ const currentHubFilter = emptyFilters();
 currentHubFilter.hub.add('East');
 assert.deepEqual(filterShipments(records, currentHubFilter, 'Current Hub').map((item) => item.id), ['1', '4']);
 
-console.log('Analytics baseline passed: totals, zero hubs, date trends, combined filters, and selected hub basis.');
+const reportSourceFilters = emptyFilters();
+reportSourceFilters.fileIds.add('synthetic-file');
+reportSourceFilters.size.add('Small');
+reportSourceFilters.lane.add('Cairo → Giza');
+assert.deepEqual(filterShipments(records, reportSourceFilters).map((item) => item.id), ['1', '3']);
+
+console.log('Analytics baseline passed: totals, trends, combined filters, file, package size, route, and hub basis.');
 
 function shipment(id, shipmentDate, items, business, shipType, packageType, packageSize, pickupCity, dropCity, pickupZone, assignedHub, hubs) {
   return {
@@ -59,7 +65,8 @@ function shipment(id, shipmentDate, items, business, shipType, packageType, pack
 
 function emptyFilters() {
   return {
-    hub: new Set(), biz: new Set(), st: new Set(), pt: new Set(), pc: new Set(), dc: new Set(),
+    hub: new Set(), biz: new Set(), st: new Set(), pt: new Set(), size: new Set(), pc: new Set(), dc: new Set(),
+    fileIds: new Set(), lane: new Set(),
     year: 'all', month: 'all', specificDate: 'all', dateFrom: '', dateTo: '',
   };
 }

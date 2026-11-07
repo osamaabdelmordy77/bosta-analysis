@@ -76,7 +76,7 @@ export const HubSection: React.FC<HubSectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -125,7 +125,7 @@ export const HubSection: React.FC<HubSectionProps> = ({
       },
     },
     scales: {
-      x: { grace: '14%', grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      x: { grace: '14%', grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
       y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   };
@@ -185,7 +185,7 @@ export const HubSection: React.FC<HubSectionProps> = ({
           },
         },
       },
-      y: { grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      y: { grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
     },
   };
 

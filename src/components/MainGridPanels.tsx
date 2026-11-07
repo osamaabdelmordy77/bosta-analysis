@@ -68,7 +68,7 @@ export const MainGridPanels: React.FC<MainGridPanelsProps> = ({
     scales: {
       x: {
         grace: '14%',
-        grid: { color: '#16224a' },
+        grid: { color: '#e7edf3' },
         ticks: { precision: 0 },
       },
       y: {
@@ -129,7 +129,7 @@ export const MainGridPanels: React.FC<MainGridPanelsProps> = ({
     scales: {
       x: {
         grace: '14%',
-        grid: { color: '#16224a' },
+        grid: { color: '#e7edf3' },
         ticks: { precision: 0 },
       },
       y: {
@@ -152,7 +152,7 @@ export const MainGridPanels: React.FC<MainGridPanelsProps> = ({
       {
         data: data.shipTypeRows.map((s) => s.n),
         backgroundColor: data.shipTypeRows.map((_, i) => PAL[i % PAL.length]),
-        borderColor: '#0d1530',
+        borderColor: '#ffffff',
         borderWidth: 2,
       },
     ],
@@ -171,7 +171,7 @@ export const MainGridPanels: React.FC<MainGridPanelsProps> = ({
     plugins: {
       legend: {
         position: 'right' as const,
-        labels: { color: '#c4cff0', boxWidth: 10, font: { size: 11 } },
+        labels: { color: '#52677e', boxWidth: 10, font: { size: 11 } },
       },
       centerText: {
         lines: [data.totalShipments.toLocaleString(), 'shipments'],
@@ -222,7 +222,7 @@ export const MainGridPanels: React.FC<MainGridPanelsProps> = ({
     scales: {
       x: {
         grace: '14%',
-        grid: { color: '#16224a' },
+        grid: { color: '#e7edf3' },
         ticks: { precision: 0 },
       },
       y: {

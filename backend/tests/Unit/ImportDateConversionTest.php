@@ -28,6 +28,14 @@ class ImportDateConversionTest extends TestCase
             [24107.5, '1904', 'Africa/Cairo', '1970-01-01 10:00:00.000000'],
             ['2026-09-28 11:22:33.123456', '1900', 'Africa/Cairo', '2026-09-28 08:22:33.123456'],
             ['2026-01-01 11:22:33.123456', '1900', 'Africa/Cairo', '2026-01-01 09:22:33.123456'],
+            ['08-15-2026, 20:39:46', '1900', 'Africa/Cairo', '2026-08-15 17:39:46.000000'],
+            ['08-15-2026, 20:39:46.123456', '1900', 'Africa/Cairo', '2026-08-15 17:39:46.123456'],
         ];
+    }
+
+    public function test_invalid_bosta_csv_date_does_not_roll_over(): void
+    {
+        $converter = new ReflectionMethod(ImportIngestionService::class, 'convertTypedValue');
+        self::assertSame([null, false], $converter->invoke(new ImportIngestionService, '13-45-2026, 20:39:46', 'dateTime', '1900', 'UTC'));
     }
 }

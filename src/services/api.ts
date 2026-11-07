@@ -24,6 +24,29 @@ export interface AuthUser {
   }>;
 }
 
+export interface OrganizationMember {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+  joined_at: string | null;
+  role: { id: number; name: string; slug: string } | null;
+}
+
+export interface AccessRole {
+  id: number | null;
+  name: string;
+  slug: string;
+  scope: 'organization' | 'system';
+  assignable: boolean;
+  permissions: string[];
+}
+
+export interface AccessPermission {
+  name: string;
+  description: string;
+}
+
 export interface OrganizationSettings {
   hubBasis?: string;
   columnOverrides?: Record<string, string>;
@@ -145,6 +168,33 @@ export async function getOrganizations(): Promise<OrganizationOption[]> {
   return result.organizations;
 }
 
+export async function getOrganizationMembers(slug: string): Promise<OrganizationMember[]> {
+  const members: OrganizationMember[] = [];
+  let cursor: string | null = null;
+  do {
+    const params = new URLSearchParams({ per_page: '100' });
+    if (cursor) params.set('cursor', cursor);
+    const result = await request<{
+      members: OrganizationMember[];
+      pagination: { next_cursor: string | null };
+    }>(`${organizationPath(slug)}/members?${params.toString()}`);
+    members.push(...result.members);
+    cursor = result.pagination.next_cursor;
+  } while (cursor);
+  return members;
+}
+
+export async function getAccessCatalog(slug: string): Promise<{
+  roles: AccessRole[];
+  permissions: AccessPermission[];
+}> {
+  const [rolesResult, permissionsResult] = await Promise.all([
+    request<{ roles: AccessRole[] }>(`${organizationPath(slug)}/roles`),
+    request<{ permissions: AccessPermission[] }>(`${organizationPath(slug)}/permissions`),
+  ]);
+  return { roles: rolesResult.roles, permissions: permissionsResult.permissions };
+}
+
 export async function getImportFiles(slug: string): Promise<{
   files: UploadedFile[];
   headers: string[];
@@ -162,7 +212,7 @@ export async function getAllShipments(slug: string): Promise<ShipmentRecord[]> {
     const records: ShipmentRecord[] = [];
     let cursor: string | null = null;
     do {
-      const params = new URLSearchParams({ source, per_page: '2000' });
+      const params = new URLSearchParams({ source, per_page: '10000' });
       if (cursor) params.set('cursor', cursor);
       const result = await request<{ shipments: ShipmentRecord[]; pagination: { next_cursor: string | null } }>(
         `${organizationPath(slug)}/imports/shipments?${params.toString()}`,

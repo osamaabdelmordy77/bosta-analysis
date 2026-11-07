@@ -119,7 +119,7 @@ class ImportController extends Controller
             403,
         );
 
-        $perPage = min(max((int) $request->query('per_page', 500), 1), 2000);
+        $perPage = min(max((int) $request->query('per_page', 500), 1), 10000);
         $source = $request->query('source', 'published');
 
         if ($source === 'legacy') {
@@ -172,6 +172,16 @@ class ImportController extends Controller
                 $join->on('routing.shipment_snapshot_id', '=', 'shipment_snapshots.id')
                     ->on('routing.organization_id', '=', 'shipment_snapshots.organization_id');
             })
+            ->leftJoin('import_source_rows as source_rows', function ($join): void {
+                $join->on('source_rows.id', '=', 'shipment_snapshots.import_source_row_id')
+                    ->on('source_rows.import_run_id', '=', 'shipment_snapshots.import_run_id')
+                    ->on('source_rows.organization_id', '=', 'shipment_snapshots.organization_id');
+            })
+            ->leftJoin('import_sheets as source_sheets', function ($join): void {
+                $join->on('source_sheets.id', '=', 'source_rows.import_sheet_id')
+                    ->on('source_sheets.import_run_id', '=', 'source_rows.import_run_id')
+                    ->on('source_sheets.organization_id', '=', 'source_rows.organization_id');
+            })
             ->select([
                 'shipment_snapshots.id', 'shipment_snapshots.id as snapshot_id', 'runs.report_date', 'files.id as file_id',
                 'files.original_name as file_name', 'shipment_snapshots.tracking_number', 'shipment_snapshots.items',
@@ -180,6 +190,8 @@ class ImportController extends Controller
                 'parties.pickup_city', 'parties.dropoff_city', 'parties.pickup_zone',
                 'routing.current_hub_name', 'routing.assigned_hub_name', 'routing.auto_assigned_hub_name',
                 'routing.first_hub_name', 'routing.last_dispatch_hub_name', 'routing.loss_liable_hub_name',
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(source_rows.source_values, JSON_UNQUOTE(JSON_SEARCH(source_sheets.source_headers, 'one', 'Picked-Up Date')))) as picked_up_date"),
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(source_rows.source_values, JSON_UNQUOTE(JSON_SEARCH(source_sheets.source_headers, 'one', 'Received Time')))) as received_time"),
             ])
             ->orderBy('shipment_snapshots.id')
             ->toBase()->cursorPaginate($perPage);
@@ -199,7 +211,7 @@ class ImportController extends Controller
         ImportFileContentStorage $contentStorage,
     ): JsonResponse {
         $validated = $request->validate([
-            'file' => ['required', 'file', 'max:32768'],
+            'file' => ['required', 'file', 'max:40960'],
             'report_date' => ['required', 'date_format:Y-m-d'],
             'manual_date' => ['sometimes', 'boolean'],
             'column_overrides' => ['sometimes', 'string', 'max:10000'],
@@ -610,6 +622,8 @@ class ImportController extends Controller
             'assignedHub' => $row->assigned_hub_name,
             'hubs' => $hubs,
             'rawDate' => null,
+            'pickedUpDate' => $row->picked_up_date,
+            'receivedTime' => $row->received_time,
         ];
     }
 

@@ -2,8 +2,8 @@
 
 return [
     'lookup_batch_keys' => (int) env('IMPORT_LOOKUP_BATCH_KEYS', 400),
-    'source_chunk_rows' => (int) env('IMPORT_SOURCE_CHUNK_ROWS', 1000),
-    'max_batch_rows' => (int) env('IMPORT_DB_BATCH_ROWS', 1000),
+    'source_chunk_rows' => (int) env('IMPORT_SOURCE_CHUNK_ROWS', 2000),
+    'max_batch_rows' => (int) env('IMPORT_DB_BATCH_ROWS', 2000),
     'max_batch_bindings' => (int) env('IMPORT_DB_BATCH_BINDINGS', 48000),
     'max_batch_bytes' => (int) env('IMPORT_DB_BATCH_BYTES', 4194304),
     'packet_margin_bytes' => (int) env('IMPORT_DB_PACKET_MARGIN_BYTES', 65536),

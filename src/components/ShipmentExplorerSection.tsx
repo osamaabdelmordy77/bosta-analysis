@@ -1,41 +1,45 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ShipmentRecord } from '../types';
-import { Download } from 'lucide-react';
+import { Copy, FileSpreadsheet, X } from 'lucide-react';
+import { formatElapsedMinutes, getElapsedMinutes, parseShipmentDateTime } from '../utils/receiveDateTime';
 
 interface ShipmentExplorerSectionProps {
   shipments: ShipmentRecord[];
+  showReceiveFields?: boolean;
 }
 
 export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = ({
   shipments,
+  showReceiveFields = false,
 }) => {
-  const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<keyof ShipmentRecord>('shipmentDate');
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(15);
+  const [selectedRecord, setSelectedRecord] = useState<ShipmentRecord | null>(null);
+  const [copyMessage, setCopyMessage] = useState('');
+
+  useEffect(() => {
+    if (!selectedRecord) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedRecord(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [selectedRecord]);
 
   const filteredShipments = useMemo(() => {
-    let list = shipments;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((r) => {
-        return (
-          r.tracking.toLowerCase().includes(q) ||
-          r.shipmentDate.includes(q) ||
-          (r.business && r.business.toLowerCase().includes(q)) ||
-          (r.assignedHub && r.assignedHub.toLowerCase().includes(q)) ||
-          (r.pickupCity && r.pickupCity.toLowerCase().includes(q)) ||
-          (r.dropCity && r.dropCity.toLowerCase().includes(q)) ||
-          (r.shipType && r.shipType.toLowerCase().includes(q)) ||
-          (r.packageType && r.packageType.toLowerCase().includes(q))
-        );
-      });
-    }
-
-    return [...list].sort((a, b) => {
+    return [...shipments].sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
+      if (sortKey === 'pickedUpDate' || sortKey === 'receivedTime') {
+        const left = parseShipmentDateTime(av as string | null)?.getTime();
+        const right = parseShipmentDateTime(bv as string | null)?.getTime();
+        if (left == null && right == null) return 0;
+        if (left == null) return 1;
+        if (right == null) return -1;
+        return (left - right) * sortDir;
+      }
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
@@ -44,7 +48,7 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
       }
       return ((av as number) - (bv as number)) * sortDir;
     });
-  }, [shipments, search, sortKey, sortDir]);
+  }, [shipments, sortKey, sortDir]);
 
   const pageCount = Math.max(1, Math.ceil(filteredShipments.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -63,75 +67,35 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
     setPage(0);
   };
 
-  const exportCSV = () => {
-    const headers = [
-      'Shipment Date',
-      'Tracking Number',
-      'Business',
-      'Shipment Type',
-      'Package Type',
-      'Package Size',
-      'Pickup City',
-      'Pickup Zone',
-      'DropOff City',
-      'Assigned Hub',
-      'Items',
-      'Source File',
-    ];
-
-    const rows = filteredShipments.map((r) => [
-      r.shipmentDate,
-      `"${r.tracking.replace(/"/g, '""')}"`,
-      `"${(r.business || '').replace(/"/g, '""')}"`,
-      `"${(r.shipType || '').replace(/"/g, '""')}"`,
-      `"${(r.packageType || '').replace(/"/g, '""')}"`,
-      `"${(r.packageSize || '').replace(/"/g, '""')}"`,
-      `"${(r.pickupCity || '').replace(/"/g, '""')}"`,
-      `"${(r.pickupZone || '').replace(/"/g, '""')}"`,
-      `"${(r.dropCity || '').replace(/"/g, '""')}"`,
-      `"${(r.assignedHub || '').replace(/"/g, '""')}"`,
-      r.items,
-      `"${r.fileName.replace(/"/g, '""')}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `shipments_explorer_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const copyTracking = async (tracking: string) => {
+    try {
+      await navigator.clipboard.writeText(tracking);
+      setCopyMessage(`Tracking ${tracking} copied.`);
+    } catch {
+      setCopyMessage('Clipboard access is unavailable in this browser.');
+    }
   };
 
   return (
     <section className="sec" id="listSection">
-      <h3>Shipment Explorer</h3>
-      <p className="lead">
-        Every shipment matching the current filters (one row per distinct tracking number).
-        Search, sort and export full records.
-      </p>
+      <div className="shipment-table-heading">
+        <div>
+          <h3>Shipment records</h3>
+          <p className="lead">Imported report snapshot. Select a row to inspect its available source details.</p>
+        </div>
+        <span className="shipment-row-count">{filteredShipments.length.toLocaleString()} records</span>
+      </div>
 
       <div className="dt-tools">
-        <input
-          type="search"
-          placeholder="Search by tracking, business, hub, city…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(0);
-          }}
-        />
-
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Rows:</span>
+          <span className="text-xs">Rows per page:</span>
           <select
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
               setPage(0);
             }}
-            className="bg-[#0a1330] border border-[#1d2a4d] rounded px-2 py-1 text-xs text-slate-200 outline-none"
+            className="table-page-size"
           >
             <option value={15}>15</option>
             <option value={25}>25</option>
@@ -140,77 +104,81 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
           </select>
         </div>
 
-        <button type="button" className="btn sm" onClick={exportCSV}>
-          <Download className="w-3.5 h-3.5" />
-          <span>Export Filtered CSV</span>
-        </button>
-
-        <span className="dt-info">
-          {filteredShipments.length.toLocaleString()} matching shipment
-          {filteredShipments.length === 1 ? '' : 's'}
-        </span>
+        <span className="dt-info">Sorted by {String(sortKey)} {sortDir > 0 ? 'ascending' : 'descending'}</span>
       </div>
 
       <div className="dt-wrap">
         <table>
           <thead>
             <tr>
-              <th onClick={() => handleSort('shipmentDate')}>
-                Shipment Date {sortKey === 'shipmentDate' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
+              <th aria-sort={sortKey === 'shipmentDate' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                <button type="button" className="table-sort-button" onClick={() => handleSort('shipmentDate')}>Report date {sortKey === 'shipmentDate' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
               </th>
-              <th onClick={() => handleSort('tracking')}>
-                Tracking Number {sortKey === 'tracking' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
+              {showReceiveFields && (
+                <>
+                  <th aria-sort={sortKey === 'pickedUpDate' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" className="table-sort-button" onClick={() => handleSort('pickedUpDate')}>Picked-Up Date {sortKey === 'pickedUpDate' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
+                  </th>
+                  <th aria-sort={sortKey === 'receivedTime' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" className="table-sort-button" onClick={() => handleSort('receivedTime')}>Received Time {sortKey === 'receivedTime' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
+                  </th>
+                  <th>Elapsed</th>
+                  <th>Type</th>
+                  <th>Package Size</th>
+                  <th>Pickup Zone</th>
+                  <th>Pickup City</th>
+                </>
+              )}
+              <th aria-sort={sortKey === 'tracking' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                <button type="button" className="table-sort-button" onClick={() => handleSort('tracking')}>Tracking {sortKey === 'tracking' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
               </th>
-              <th onClick={() => handleSort('business')}>
-                Business {sortKey === 'business' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
+              <th aria-sort={sortKey === 'business' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                <button type="button" className="table-sort-button" onClick={() => handleSort('business')}>Business {sortKey === 'business' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
               </th>
-              <th onClick={() => handleSort('shipType')}>
-                Type {sortKey === 'shipType' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
+              <th>Route</th>
+              <th aria-sort={sortKey === 'assignedHub' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                <button type="button" className="table-sort-button" onClick={() => handleSort('assignedHub')}>Assigned center {sortKey === 'assignedHub' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
               </th>
-              <th onClick={() => handleSort('packageType')}>
-                Package Type {sortKey === 'packageType' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
-              </th>
-              <th onClick={() => handleSort('packageSize')}>
-                Size {sortKey === 'packageSize' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
-              </th>
-              <th onClick={() => handleSort('pickupCity')}>
-                Pickup City {sortKey === 'pickupCity' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
-              </th>
-              <th onClick={() => handleSort('pickupZone')}>
-                Pickup Zone {sortKey === 'pickupZone' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
-              </th>
-              <th onClick={() => handleSort('dropCity')}>
-                DropOff City {sortKey === 'dropCity' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
-              </th>
-              <th onClick={() => handleSort('assignedHub')}>
-                Hub {sortKey === 'assignedHub' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
-              </th>
-              <th className="r" onClick={() => handleSort('items')}>
-                Items {sortKey === 'items' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}
+              <th>Package</th>
+              <th className="r" aria-sort={sortKey === 'items' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                <button type="button" className="table-sort-button" onClick={() => handleSort('items')}>Items {sortKey === 'items' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
               </th>
             </tr>
           </thead>
           <tbody>
             {paginatedRows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="text-center text-slate-400 p-6">
-                  No shipments found matching current filters
+              <td colSpan={showReceiveFields ? 14 : 7} className="shipment-empty-row">
+                  <strong>No shipment rows match these filters</strong>
+                  <span>Remove a filter or clear all to return to the report data.</span>
                 </td>
               </tr>
             ) : (
               paginatedRows.map((r) => (
-                <tr key={r.id}>
-                  <td className="font-semibold text-slate-300">{r.shipmentDate}</td>
-                  <td className="font-mono text-xs text-sky-400 select-all">{r.tracking}</td>
-                  <td className="text-slate-200">{r.business || '—'}</td>
-                  <td>{r.shipType || '—'}</td>
-                  <td>{r.packageType || '—'}</td>
-                  <td>{r.packageSize || '—'}</td>
-                  <td>{r.pickupCity || '—'}</td>
-                  <td>{r.pickupZone || '—'}</td>
-                  <td>{r.dropCity || '—'}</td>
-                  <td className="font-medium text-slate-300">{r.assignedHub || '—'}</td>
-                  <td className="r font-semibold text-emerald-400">{r.items}</td>
+                <tr key={r.id} tabIndex={0} onClick={() => setSelectedRecord(r)} onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setSelectedRecord(r);
+                  }
+                }}>
+                  <td className="record-date-cell">{r.shipmentDate || 'Not set'}</td>
+                  {showReceiveFields && (
+                    <>
+                      <td>{r.pickedUpDate || '—'}</td>
+                      <td>{r.receivedTime || '—'}</td>
+                      <td>{formatElapsedMinutes(getElapsedMinutes(r.pickedUpDate, r.receivedTime))}</td>
+                      <td>{r.shipType || '—'}</td>
+                      <td>{r.packageSize || '—'}</td>
+                      <td>{r.pickupZone || '—'}</td>
+                      <td>{r.pickupCity || '—'}</td>
+                    </>
+                  )}
+                  <td><span className="tracking-value">{r.tracking || 'Not available'}</span>{Boolean(r.tracking) && <button type="button" className="copy-tracking-button" aria-label={`Copy tracking ${r.tracking}`} onClick={(event) => { event.stopPropagation(); void copyTracking(r.tracking); }}><Copy size={14} /></button>}</td>
+                  <td>{r.business || '—'}</td>
+                  <td>{r.pickupCity || '—'}{r.dropCity ? ` → ${r.dropCity}` : ''}</td>
+                  <td>{r.assignedHub || '—'}</td>
+                  <td>{[r.shipType, r.packageType, r.packageSize].filter(Boolean).join(' · ') || '—'}</td>
+                  <td className="r numeric-cell">{r.items.toLocaleString()}</td>
                 </tr>
               ))
             )}
@@ -239,6 +207,31 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
           Next ›
         </button>
       </div>
+      {copyMessage && <div className="copy-feedback" role="status">{copyMessage}<button type="button" onClick={() => setCopyMessage('')} aria-label="Dismiss copy message"><X size={14} /></button></div>}
+      {selectedRecord && (
+        <div className="record-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedRecord(null); }}>
+          <aside className="record-drawer" role="dialog" aria-modal="true" aria-labelledby="record-drawer-title">
+            <header><div><span className="source-kind">Imported report record</span><h2 id="record-drawer-title">Shipment details</h2></div><button type="button" className="icon-button" onClick={() => setSelectedRecord(null)} aria-label="Close shipment details"><X size={19} /></button></header>
+            <div className="record-drawer-source"><FileSpreadsheet size={17} /><div><strong>{selectedRecord.fileName || 'Source file unavailable'}</strong><span>Report date · {selectedRecord.shipmentDate || 'Not set'}</span></div></div>
+            <dl className="record-detail-list">
+              <div><dt>Tracking</dt><dd>{selectedRecord.tracking || 'Not available'}</dd></div>
+              <div><dt>Shipment type</dt><dd>{selectedRecord.shipType || 'Not available'}</dd></div>
+              <div><dt>Business</dt><dd>{selectedRecord.business || 'Not available'}</dd></div>
+              <div><dt>Package</dt><dd>{[selectedRecord.packageType, selectedRecord.packageSize].filter(Boolean).join(' · ') || 'Not available'}</dd></div>
+              <div><dt>Pickup city</dt><dd>{selectedRecord.pickupCity || 'Not available'}</dd></div>
+              <div><dt>Pickup zone</dt><dd>{selectedRecord.pickupZone || 'Not available'}</dd></div>
+              <div><dt>Picked-Up Date</dt><dd>{selectedRecord.pickedUpDate || 'Not available'}</dd></div>
+              <div><dt>Received Time</dt><dd>{selectedRecord.receivedTime || 'Not available'}</dd></div>
+              <div><dt>Elapsed</dt><dd>{formatElapsedMinutes(getElapsedMinutes(selectedRecord.pickedUpDate, selectedRecord.receivedTime))}</dd></div>
+              <div><dt>Drop-off city</dt><dd>{selectedRecord.dropCity || 'Not available'}</dd></div>
+              <div><dt>Assigned center</dt><dd>{selectedRecord.assignedHub || 'Not available'}</dd></div>
+              <div><dt>Items</dt><dd>{selectedRecord.items.toLocaleString()}</dd></div>
+              {selectedRecord.sourceSheetIndex !== undefined && <div><dt>Source sheet</dt><dd>{selectedRecord.sourceSheetIndex + 1}</dd></div>}
+              {selectedRecord.sourceRowNumber !== undefined && <div><dt>Source row</dt><dd>{selectedRecord.sourceRowNumber}</dd></div>}
+            </dl>
+          </aside>
+        </div>
+      )}
     </section>
   );
 };

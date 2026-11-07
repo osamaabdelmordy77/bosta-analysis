@@ -23,6 +23,10 @@ export function filterShipments(records: ShipmentRecord[], filters: FilterState,
       if (!r.packageType || !filters.pt.has(r.packageType)) return false;
     }
 
+    if (filters.size.size > 0) {
+      if (!r.packageSize || !filters.size.has(r.packageSize)) return false;
+    }
+
     // Pickup city filter
     if (filters.pc.size > 0) {
       if (!r.pickupCity || !filters.pc.has(r.pickupCity)) return false;
@@ -31,6 +35,11 @@ export function filterShipments(records: ShipmentRecord[], filters: FilterState,
     // Dropoff city filter
     if (filters.dc.size > 0) {
       if (!r.dropCity || !filters.dc.has(r.dropCity)) return false;
+    }
+
+    if (filters.fileIds.size > 0 && !filters.fileIds.has(r.fileId)) return false;
+    if (filters.lane.size > 0) {
+      if (!r.pickupCity || !r.dropCity || !filters.lane.has(`${r.pickupCity} → ${r.dropCity}`)) return false;
     }
 
     // Date filters: use r.shipmentDate (YYYY-MM-DD)

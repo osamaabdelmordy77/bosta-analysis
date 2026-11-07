@@ -152,6 +152,7 @@ class ImportWorkbookProcessor
             $this->metrics->addPhase('chunk_ingestion_and_progress_wall_ms', $flushMilliseconds);
             $this->metrics->addPhase('reader_and_dashboard_wall_ms', max(0, $readAndIngestMilliseconds - $flushMilliseconds));
 
+            $prepublicationStartedAt = hrtime(true);
             $currentRun = DB::table('import_runs')->where('id', $runId)->where('organization_id', $organizationId)->first();
             $observedRows = (int) $currentRun->source_rows_count;
             DB::table('import_runs')->where('id', $runId)->where('organization_id', $organizationId)->update([
@@ -162,9 +163,9 @@ class ImportWorkbookProcessor
                 'updated_at' => now(),
             ]);
 
-            $this->metrics->addPhase('prepublication_checks_wall_ms', (hrtime(true) - $startedAt) / 1_000_000);
             $warningCount = (int) DB::table('import_issues')->where('organization_id', $organizationId)
                 ->where('import_run_id', $runId)->where('severity', 'warning')->count();
+            $this->metrics->addPhase('prepublication_checks_wall_ms', (hrtime(true) - $prepublicationStartedAt) / 1_000_000);
             $this->publication->publish($organizationId, $fileId, $runId, function () use (
                 $inspection, $currentRun, $observedRows, $warningCount, $startedAt, $queueWaitMs,
                 $options, $file, $content, $runId,

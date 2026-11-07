@@ -25,7 +25,7 @@ export const TimeAnalyticsSection: React.FC<TimeAnalyticsSectionProps> = ({
         label: 'Daily Shipments',
         data: data.dailyTrend.map((d) => d.n),
         borderColor: LIGHT,
-        backgroundColor: '#38bdf822',
+        backgroundColor: '#4b83ba22',
         fill: true,
         tension: 0.25,
         pointRadius: data.dailyTrend.length > 40 ? 1 : 3,
@@ -67,7 +67,7 @@ export const TimeAnalyticsSection: React.FC<TimeAnalyticsSectionProps> = ({
         },
       },
       y: {
-        grid: { color: '#16224a' },
+        grid: { color: '#e7edf3' },
         ticks: { precision: 0 },
       },
     },
@@ -113,7 +113,7 @@ export const TimeAnalyticsSection: React.FC<TimeAnalyticsSectionProps> = ({
     },
     scales: {
       x: { grid: { display: false } },
-      y: { grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      y: { grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
     },
   };
 
@@ -145,7 +145,7 @@ export const TimeAnalyticsSection: React.FC<TimeAnalyticsSectionProps> = ({
     },
     scales: {
       x: { grid: { display: false } },
-      y: { grid: { color: '#16224a' }, ticks: { precision: 0 } },
+      y: { grid: { color: '#e7edf3' }, ticks: { precision: 0 } },
     },
   };
 

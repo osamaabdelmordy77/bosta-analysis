@@ -726,6 +726,18 @@ class ImportIngestionService
                 }
 
                 $value = trim((string) $raw);
+                // Bosta CSV exports use US month-day-year timestamps with a comma.
+                // Parse them explicitly so Carbon cannot guess a different day/month order.
+                if (preg_match('/\A\d{2}-\d{2}-\d{4}, \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\z/', $value) === 1) {
+                    $format = str_contains($value, '.') ? '!m-d-Y, H:i:s.u' : '!m-d-Y, H:i:s';
+                    $date = \DateTimeImmutable::createFromFormat($format, $value, new \DateTimeZone($reportTimezone));
+                    $errors = \DateTimeImmutable::getLastErrors();
+                    if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+                        return [null, false];
+                    }
+
+                    return [$date->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), true];
+                }
                 $knownIsoFormat = preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $value) === 1
                     || preg_match('/\A\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:?\d{2})?\z/i', $value) === 1
                     || preg_match('/\A\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})?\z/i', $value) === 1;

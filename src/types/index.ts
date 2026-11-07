@@ -30,6 +30,8 @@ export interface ShipmentRecord {
   assignedHub: string | null;
   hubs: Record<string, string | null>;
   rawDate?: string | null;
+  pickedUpDate?: string | null;
+  receivedTime?: string | null;
   sourceSheetIndex?: number;
   sourceRowNumber?: number;
 }
@@ -52,8 +54,11 @@ export interface FilterState {
   biz: Set<string>;
   st: Set<string>;
   pt: Set<string>;
+  size: Set<string>;
   pc: Set<string>;
   dc: Set<string>;
+  fileIds: Set<string>;
+  lane: Set<string>;
   year: string; // 'all' or '2026', etc.
   month: string; // 'all' or '01'..'12' or '2026-07'
   dateFrom: string; // YYYY-MM-DD or ''

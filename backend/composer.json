@@ -48,7 +48,10 @@
             "@php artisan config:clear --ansi",
             "@php artisan test --env=testing"
         ],
-        "queue:imports": "@php artisan queue:work database --queue=imports --sleep=1 --tries=3 --timeout=3600 --max-jobs=100",
+        "queue:imports": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan queue:listen database --queue=imports --sleep=1 --tries=3 --timeout=3600 --memory=512"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

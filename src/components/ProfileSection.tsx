@@ -96,7 +96,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
           </table>
 
           {hubLabels.length > 0 && (
-            <p style={{ margin: '10px 0 0', fontSize: '12.5px', color: '#c4cff0' }}>
+            <p style={{ margin: '10px 0 0', fontSize: '12.5px', color: 'var(--text)' }}>
               Hub ranking field:{' '}
               <select
                 value={hubBasis}
@@ -108,7 +108,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
                   </option>
                 ))}
               </select>{' '}
-              <span style={{ color: '#8c9abd' }}>
+              <span style={{ color: 'var(--mut)' }}>
                 (default = “Assigned Hub”, or the column with most distinct hubs)
               </span>
             </p>

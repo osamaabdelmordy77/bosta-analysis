@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, X, FileCheck, Layers, CalendarCheck } from 'lucide-react';
+import { ModalDialog } from './ModalDialog';
 
 interface DuplicateExplainerModalProps {
   isOpen: boolean;
@@ -13,24 +14,23 @@ export const DuplicateExplainerModal: React.FC<DuplicateExplainerModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '720px' }}>
+    <ModalDialog labelledBy="duplicate-modal-title" maxWidth={720} onClose={onClose}>
         <div className="modal-header">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <h3>Data Accuracy &amp; Duplicate Handling Architecture</h3>
+              <h3 id="duplicate-modal-title">Data Accuracy &amp; Duplicate Handling Architecture</h3>
               <p className="text-xs text-slate-400 m-0">
                 How duplicate files and cross-day shipment tracking numbers are handled
               </p>
             </div>
           </div>
-          <button type="button" className="text-slate-400 hover:text-white p-1" onClick={onClose}>
+          <button type="button" className="modal-close icon-button" onClick={onClose} aria-label="Close duplicate handling details">
             <X className="w-5 h-5" />
           </button>
-        </div>
+      </div>
 
         <div className="modal-body space-y-4 text-xs text-slate-300 leading-relaxed">
           <div className="p-3 bg-[#0a1330] border border-[#1d2a4d] rounded-lg">
@@ -72,14 +72,13 @@ export const DuplicateExplainerModal: React.FC<DuplicateExplainerModalProps> = (
               <li>Archiving a file removes it from active reports while retaining its data and audit history.</li>
             </ul>
           </div>
-        </div>
 
+        </div>
         <div className="modal-footer">
           <button type="button" className="btn pri sm" onClick={onClose}>
             Got it
           </button>
         </div>
-      </div>
-    </div>
+    </ModalDialog>
   );
 };

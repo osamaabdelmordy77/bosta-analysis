@@ -19,6 +19,8 @@ The Laravel API lives here. The React/Vite application remains at the repository
 
 Use a private database account and a strong local password. Keep `.env`, MySQL data files, and uploaded source workbooks out of Git. Store uploaded workbooks on a private filesystem disk; never serve their storage paths directly.
 
+To create a local workspace administrator, set `LOCAL_WORKSPACE_SEED_ENABLED=true` and provide the organization name/slug, administrator name/email/password, and role slug (`organization-admin`, `data-manager`, `analyst`, `hub-manager`, `viewer`, or `auditor`) in the ignored `.env`. Then run `php artisan db:seed`. The seeder is restricted to `APP_ENV=local`, synchronizes the organization role catalog, creates an active organization membership, and records the membership in the audit log. Seeding the same email again updates its local password from `.env`; keep this password out of tracked files and do not use a local seed password outside development.
+
 ## Import worker
 
 The database queue is installed through the migrations. Start one worker with:

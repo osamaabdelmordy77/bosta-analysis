@@ -70,6 +70,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
         type="button"
         className={`ms-btn ${selected.size > 0 ? 'on' : ''}`}
         onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
       >
         <span className="ms-v">{displayText}</span>
         <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -83,6 +85,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               placeholder={`Search ${label.toLowerCase()}…`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label={`Search ${label.toLowerCase()}`}
               autoFocus
             />
             {search && (
@@ -90,6 +93,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 type="button"
                 className="absolute right-2 top-2 text-slate-400 hover:text-white"
                 onClick={() => setSearch('')}
+                aria-label="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -97,8 +101,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           </div>
 
           <div className="ms-act">
-            <a onClick={clearSelection}>Clear selection</a>
-            <a onClick={() => setIsOpen(false)}>Close</a>
+            <button type="button" onClick={clearSelection}>Clear selection</button>
+            <button type="button" onClick={() => setIsOpen(false)}>Close</button>
           </div>
 
           <div className="ms-list">
