@@ -3,6 +3,8 @@
 use App\Http\Controllers\AccessCatalogController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CarsSheetController;
+use App\Http\Controllers\BostaMissScanController;
 use App\Http\Controllers\HubController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\LegacyImportController;
@@ -48,6 +50,16 @@ Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group
             Route::get('/roles', [AccessCatalogController::class, 'roles'])->middleware('permission:roles.view');
             Route::get('/permissions', [AccessCatalogController::class, 'permissions'])->middleware('permission:roles.view');
             Route::get('/hubs', [HubController::class, 'index']);
+            Route::get('/loading/cars', [CarsSheetController::class, 'show']);
+            Route::prefix('miss-scan')->middleware('permission:shipments.view_all')->group(function (): void {
+                Route::get('/connection', [BostaMissScanController::class, 'status']);
+                Route::post('/connection', [BostaMissScanController::class, 'connect'])->middleware('throttle:auth-login');
+                Route::delete('/connection', [BostaMissScanController::class, 'disconnect']);
+                Route::get('/hubs', [BostaMissScanController::class, 'hubs']);
+                Route::get('/count', [BostaMissScanController::class, 'count']);
+                Route::get('/pages/{page}', [BostaMissScanController::class, 'page'])->whereNumber('page');
+                Route::get('/deliveries/{deliveryId}', [BostaMissScanController::class, 'details']);
+            });
             Route::get('/hubs/{hub}', [HubController::class, 'show']);
             Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view');
 

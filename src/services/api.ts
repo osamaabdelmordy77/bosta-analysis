@@ -147,6 +147,63 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const organizationPath = (slug: string) => `/api/organizations/${encodeURIComponent(slug)}`;
 
+export interface CarsSheetSnapshot {
+  rows: string[][];
+  source_url: string;
+  fetched_at: string;
+}
+
+export async function getCarsSheet(slug: string): Promise<CarsSheetSnapshot> {
+  return request<CarsSheetSnapshot>(`${organizationPath(slug)}/loading/cars`);
+}
+
+export interface BostaHubOption { id: string; name: string }
+export type BostaLiveDelivery = Record<string, unknown> & {
+  _id: string;
+  trackingNumber?: string;
+  state?: { code?: string | number; childState?: string | number; receivedAtWarehouse?: { time?: string; warehouse?: unknown }; readyToDispatch?: { time?: string; warehouse?: unknown }; time?: string; updatedAt?: string; createdAt?: string; value?: string };
+  sender?: { name?: string };
+  assignedHub?: { name?: string };
+  assignedHubName?: string;
+  destinationHub?: { name?: string };
+  hub?: { name?: string };
+  firstHub?: { time?: string; warehouse?: unknown };
+  readyToDispatchAt?: string;
+  readyToDispatchTime?: string;
+  stateHistory?: Array<Record<string, unknown>>;
+  history?: Array<Record<string, unknown>>;
+  states?: Array<Record<string, unknown>>;
+  timeline?: Array<Record<string, unknown>>;
+  events?: Array<Record<string, unknown>>;
+  logs?: Array<Record<string, unknown>>;
+  trackingHistory?: Array<Record<string, unknown>>;
+  log?: Array<Record<string, unknown>>;
+};
+
+const missScanPath = (slug: string) => `${organizationPath(slug)}/miss-scan`;
+
+export async function getBostaConnection(slug: string): Promise<boolean> {
+  return (await request<{ connected: boolean }>(`${missScanPath(slug)}/connection`)).connected;
+}
+export async function connectBosta(slug: string, token: string): Promise<BostaHubOption[]> {
+  return (await request<{ hubs: BostaHubOption[] }>(`${missScanPath(slug)}/connection`, { method: 'POST', body: JSON.stringify({ token }) })).hubs;
+}
+export async function disconnectBosta(slug: string): Promise<void> {
+  await request(`${missScanPath(slug)}/connection`, { method: 'DELETE' });
+}
+export async function getBostaHubs(slug: string): Promise<BostaHubOption[]> {
+  return (await request<{ hubs: BostaHubOption[] }>(`${missScanPath(slug)}/hubs`)).hubs;
+}
+export async function getBostaMissScanCount(slug: string, hubId: string): Promise<number> {
+  return (await request<{ count: number }>(`${missScanPath(slug)}/count?hub_id=${encodeURIComponent(hubId)}`)).count;
+}
+export async function getBostaMissScanPage(slug: string, hubId: string, page: number): Promise<BostaLiveDelivery[]> {
+  return (await request<{ deliveries: BostaLiveDelivery[] }>(`${missScanPath(slug)}/pages/${page}?hub_id=${encodeURIComponent(hubId)}`)).deliveries;
+}
+export async function getBostaDeliveryDetails(slug: string, id: string): Promise<BostaLiveDelivery | null> {
+  return (await request<{ delivery: BostaLiveDelivery | null }>(`${missScanPath(slug)}/deliveries/${encodeURIComponent(id)}`)).delivery;
+}
+
 export async function downloadReceiveVolumePivot(slug: string, rows: VolumeSummary[]): Promise<void> {
   const response = await fetch(`${organizationPath(slug)}/receive/volume/export`, {
     method: 'POST', credentials: 'include',

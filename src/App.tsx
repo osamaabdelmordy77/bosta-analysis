@@ -46,6 +46,8 @@ import { KPICards } from './components/KPICards';
 import { AnalyticsCardsSection } from './components/AnalyticsCardsSection';
 import { ShipmentExplorerSection } from './components/ShipmentExplorerSection';
 import { ReceiveSheetsSection } from './components/ReceiveSheetsSection';
+import { CarsSheetSection } from './components/CarsSheetSection';
+import { MissScanSection } from './components/MissScanSection';
 import { SortSheetsSection } from './components/SortSheetsSection';
 import { ProfileSection } from './components/ProfileSection';
 import { UploadModal, PendingFile } from './components/UploadModal';
@@ -74,9 +76,9 @@ import {
 } from 'lucide-react';
 
 type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Users' | 'Roles & Permissions';
-type WorkspaceTab = 'Sheets' | 'Live';
+type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Miss Scan';
 type AccessLoadState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
-type PageFilters = Record<WorkspacePage, Record<WorkspaceTab, FilterState>>;
+type PageFilters = Record<WorkspacePage, Record<'Sheets' | 'Live', FilterState>>;
 
 function createDefaultFilters(): FilterState {
   return {
@@ -164,7 +166,7 @@ export default function App() {
     Users: 'Live',
     'Roles & Permissions': 'Live',
   });
-  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null });
+  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Miss Scan': null });
   const [accessFiltersByPage, setAccessFiltersByPage] = useState<Record<'Users' | 'Roles & Permissions', Record<string, string>>>({
     Users: { role: '', status: '' },
     'Roles & Permissions': { group: '', scope: '' },
@@ -203,16 +205,25 @@ export default function App() {
     'Roles & Permissions': '',
   });
   const activeTab = pageTabs[activePage];
-  const filters = filtersByPage[activePage][activeTab];
+  const filterTab = activeTab === 'CARS' || activeTab === 'Miss Scan' ? 'Sheets' : activeTab;
+  const canViewMissScan = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager', 'analyst', 'auditor'].includes(activeOrganization?.role?.slug || ''));
+  const availableTabs: WorkspaceTab[] = activePage === 'Loading' ? ['Sheets', 'Live', 'CARS']
+    : activePage === 'Transfer' && canViewMissScan ? ['Sheets', 'Live', 'Miss Scan'] : ['Sheets', 'Live'];
+  useEffect(() => {
+    if (!canViewMissScan) {
+      setPageTabs((previous) => previous.Transfer === 'Miss Scan' ? { ...previous, Transfer: 'Sheets' } : previous);
+    }
+  }, [canViewMissScan]);
+  const filters = filtersByPage[activePage][filterTab];
   const setFilters = useCallback<React.Dispatch<React.SetStateAction<FilterState>>>((next) => {
     setFiltersByPage((previous) => ({
       ...previous,
       [activePage]: {
         ...previous[activePage],
-        [activeTab]: typeof next === 'function' ? next(previous[activePage][activeTab]) : next,
+        [filterTab]: typeof next === 'function' ? next(previous[activePage][filterTab]) : next,
       },
     }));
-  }, [activePage, activeTab]);
+  }, [activePage, filterTab]);
 
   useEffect(() => {
     setFiltersByPage(createPageFilters());
@@ -735,7 +746,9 @@ export default function App() {
       [activePage]: { ...previous[activePage], [key]: value },
     }));
   };
-  const pageSource = activeTab === 'Sheets'
+  const pageSource = activePage === 'Transfer' && activeTab === 'Miss Scan' ? 'Bosta Admin live API · session token'
+    : activeTab === 'CARS' ? 'Linked Google Sheet · CARS'
+    : activeTab === 'Sheets'
     ? isOperationsPage
       ? files.length > 0 ? 'Imported workbook snapshots · organization database' : 'Organization imports API · awaiting reports'
       : 'No sheet source connected'
@@ -931,13 +944,15 @@ export default function App() {
             <div className="page-heading-copy">
               <p className="page-eyebrow">{activeOrganization.name}</p>
               <h1 ref={pageHeadingRef} tabIndex={-1}>{activePage}</h1>
-              <p className="page-description">{pageDescriptions[activePage]}</p>
+              <p className="page-description">{activePage === 'Transfer' && activeTab === 'Miss Scan'
+                ? 'Monitor Bosta Admin shipments received without a Ready to Dispatch scan.'
+                : pageDescriptions[activePage]}</p>
               <div className="page-source-meta">
                 <span><strong>Source</strong> {pageSource}</span>
-                <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>
+                {activeTab !== 'Miss Scan' && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
               </div>
             </div>
-            {isOperationsPage ? (
+            {activeTab === 'Miss Scan' || activePage === 'Loading' && activeTab === 'CARS' ? null : isOperationsPage ? (
               <button type="button" className="btn pri page-primary-action" onClick={() => setIsUploadOpen(true)}>
                 <Upload size={16} /><span>{activePage === 'Receive' ? 'Upload reports' : 'Add source report'}</span>
               </button>
@@ -950,10 +965,10 @@ export default function App() {
           </section>
 
           <div className="page-tabs" role="tablist" aria-label={`${activePage} views`}>
-            {(['Sheets', 'Live'] as const).map((tab) => (
+            {availableTabs.map((tab) => (
               <button
                 key={tab}
-                id={`${activePage.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${tab.toLowerCase()}-tab`}
+                id={`${activePage.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-tab`}
                 type="button"
                 role="tab"
                 aria-selected={activeTab === tab}
@@ -965,10 +980,11 @@ export default function App() {
                 onKeyDown={(event) => {
                   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
                   event.preventDefault();
-                  const nextTab = event.key === 'Home' ? 'Sheets'
-                    : event.key === 'End' ? 'Live'
-                      : event.key === 'ArrowRight' ? activeTab === 'Sheets' ? 'Live' : 'Sheets'
-                        : activeTab === 'Live' ? 'Sheets' : 'Live';
+                  const tabs = availableTabs;
+                  const position = tabs.indexOf(activeTab);
+                  const nextTab = event.key === 'Home' ? tabs[0]
+                    : event.key === 'End' ? tabs[tabs.length - 1]
+                      : tabs[(position + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
                   setActiveTab(nextTab);
                   pageTabRefs.current[nextTab]?.focus();
                 }}
@@ -978,7 +994,7 @@ export default function App() {
             ))}
           </div>
 
-          {!(activePage === 'Receive' && activeTab === 'Sheets') && (
+          {activeTab !== 'Miss Scan' && activeTab !== 'CARS' && !(activePage === 'Receive' && activeTab === 'Sheets') && (
             <PageFilterPanel
               page={activePage}
               tab={activeTab}
@@ -1011,7 +1027,7 @@ export default function App() {
             id="page-tab-panel"
             className="page-tab-panel"
             role="tabpanel"
-            aria-labelledby={`${activePage.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${activeTab.toLowerCase()}-tab`}
+            aria-labelledby={`${activePage.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${activeTab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-tab`}
           >
       {isOperationsPage && activeTab === 'Sheets' && visibleImportJobs.length > 0 && (
         <section aria-label="Import status" className="import-status-list">
@@ -1086,6 +1102,10 @@ export default function App() {
             <RefreshCw size={16} /><span>Try again</span>
           </button>
         </section>
+      ) : activePage === 'Transfer' && activeTab === 'Miss Scan' && canViewMissScan ? (
+        <MissScanSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
+      ) : activePage === 'Loading' && activeTab === 'CARS' ? (
+        <CarsSheetSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
       ) : isOperationsPage && activeTab === 'Live' ? (
         <section className="source-empty-state">
           <div className="empty-icon"><RefreshCw size={21} /></div>
