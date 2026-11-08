@@ -47,6 +47,7 @@ import { AnalyticsCardsSection } from './components/AnalyticsCardsSection';
 import { ShipmentExplorerSection } from './components/ShipmentExplorerSection';
 import { ReceiveSheetsSection } from './components/ReceiveSheetsSection';
 import { CarsSheetSection } from './components/CarsSheetSection';
+import { LoadingManifestSection } from './components/LoadingManifestSection';
 import { MissScanSection } from './components/MissScanSection';
 import { SortSheetsSection } from './components/SortSheetsSection';
 import { ProfileSection } from './components/ProfileSection';
@@ -76,7 +77,7 @@ import {
 } from 'lucide-react';
 
 type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Users' | 'Roles & Permissions';
-type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Miss Scan';
+type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Miss Scan' | 'mainfest';
 type AccessLoadState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
 type PageFilters = Record<WorkspacePage, Record<'Sheets' | 'Live', FilterState>>;
 
@@ -166,7 +167,7 @@ export default function App() {
     Users: 'Live',
     'Roles & Permissions': 'Live',
   });
-  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Miss Scan': null });
+  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Miss Scan': null, mainfest: null });
   const [accessFiltersByPage, setAccessFiltersByPage] = useState<Record<'Users' | 'Roles & Permissions', Record<string, string>>>({
     Users: { role: '', status: '' },
     'Roles & Permissions': { group: '', scope: '' },
@@ -205,9 +206,9 @@ export default function App() {
     'Roles & Permissions': '',
   });
   const activeTab = pageTabs[activePage];
-  const filterTab = activeTab === 'CARS' || activeTab === 'Miss Scan' ? 'Sheets' : activeTab;
+  const filterTab = activeTab === 'CARS' || activeTab === 'Miss Scan' || activeTab === 'mainfest' ? 'Sheets' : activeTab;
   const canViewMissScan = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager', 'analyst', 'auditor'].includes(activeOrganization?.role?.slug || ''));
-  const availableTabs: WorkspaceTab[] = activePage === 'Loading' ? ['Sheets', 'Live', 'CARS']
+  const availableTabs: WorkspaceTab[] = activePage === 'Loading' ? ['Sheets', 'Live', 'CARS', 'mainfest']
     : activePage === 'Transfer' && canViewMissScan ? ['Sheets', 'Live', 'Miss Scan'] : ['Sheets', 'Live'];
   useEffect(() => {
     if (!canViewMissScan) {
@@ -748,6 +749,7 @@ export default function App() {
   };
   const pageSource = activePage === 'Transfer' && activeTab === 'Miss Scan' ? 'Bosta Admin live API · session token'
     : activeTab === 'CARS' ? 'Linked Google Sheet · CARS'
+    : activeTab === 'mainfest' ? 'CARS snapshot × uploaded Master Seal manifest · car and day'
     : activeTab === 'Sheets'
     ? isOperationsPage
       ? files.length > 0 ? 'Imported workbook snapshots · organization database' : 'Organization imports API · awaiting reports'
@@ -952,7 +954,7 @@ export default function App() {
                 {activeTab !== 'Miss Scan' && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
               </div>
             </div>
-            {activeTab === 'Miss Scan' || activePage === 'Loading' && activeTab === 'CARS' ? null : isOperationsPage ? (
+            {activeTab === 'Miss Scan' || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage ? (
               <button type="button" className="btn pri page-primary-action" onClick={() => setIsUploadOpen(true)}>
                 <Upload size={16} /><span>{activePage === 'Receive' ? 'Upload reports' : 'Add source report'}</span>
               </button>
@@ -994,7 +996,7 @@ export default function App() {
             ))}
           </div>
 
-          {activeTab !== 'Miss Scan' && activeTab !== 'CARS' && !(activePage === 'Receive' && activeTab === 'Sheets') && (
+          {activeTab !== 'Miss Scan' && activeTab !== 'CARS' && activeTab !== 'mainfest' && !(activePage === 'Receive' && activeTab === 'Sheets') && (
             <PageFilterPanel
               page={activePage}
               tab={activeTab}
@@ -1106,6 +1108,8 @@ export default function App() {
         <MissScanSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
       ) : activePage === 'Loading' && activeTab === 'CARS' ? (
         <CarsSheetSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
+      ) : activePage === 'Loading' && activeTab === 'mainfest' ? (
+        <LoadingManifestSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} canUpload={Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager'].includes(activeOrganization.role?.slug || ''))} />
       ) : isOperationsPage && activeTab === 'Live' ? (
         <section className="source-empty-state">
           <div className="empty-icon"><RefreshCw size={21} /></div>

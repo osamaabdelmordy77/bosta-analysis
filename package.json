@@ -14,7 +14,8 @@
     "verify:excel-dates": "node --import tsx scripts/verify-excel-dates.mjs",
     "verify:analytics": "node --import tsx scripts/verify-analytics.mjs",
     "verify:receive-volume": "node --import tsx scripts/verify-receive-volume.mjs",
-    "verify:sort-areas": "node --import tsx scripts/verify-sort-areas.mjs"
+    "verify:sort-areas": "node --import tsx scripts/verify-sort-areas.mjs",
+    "verify:loading-manifest": "node --import tsx scripts/verify-loading-manifest.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

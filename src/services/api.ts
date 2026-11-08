@@ -1,4 +1,5 @@
 import { UploadedFile, ShipmentRecord } from '../types';
+import type { ManifestCar, ManifestReport, ManifestSummary } from '../types/loadingManifest';
 import type { VolumeSummary } from '../utils/receiveVolume';
 import {
   beginImportBenchmarkRequest,
@@ -151,10 +152,39 @@ export interface CarsSheetSnapshot {
   rows: string[][];
   source_url: string;
   fetched_at: string;
+  sheet_name?: string | null;
+  sheet_date?: string | null;
+  requested_date?: string;
+  selection_required?: boolean;
+  available_sheets?: { name: string; date: string | null }[];
 }
 
-export async function getCarsSheet(slug: string): Promise<CarsSheetSnapshot> {
-  return request<CarsSheetSnapshot>(`${organizationPath(slug)}/loading/cars`);
+export async function getCarsSheet(slug: string, date?: string, sheetName?: string): Promise<CarsSheetSnapshot> {
+  const query = new URLSearchParams();
+  if (date) query.set('date', date);
+  if (sheetName) query.set('sheet_name', sheetName);
+  return request<CarsSheetSnapshot>(`${organizationPath(slug)}/loading/cars?${query}`);
+}
+
+export async function getManifestCars(slug: string, date: string, sheetName?: string): Promise<{ snapshot: CarsSheetSnapshot; cars: ManifestCar[] }> {
+  const query = new URLSearchParams({ date });
+  if (sheetName) query.set('sheet_name', sheetName);
+  return request(`${organizationPath(slug)}/loading/manifests/cars?${query}`);
+}
+export async function getManifestHistory(slug: string, date: string): Promise<{ uploads: ManifestSummary[] }> {
+  return request(`${organizationPath(slug)}/loading/manifests?date=${encodeURIComponent(date)}`);
+}
+export async function getManifestReport(slug: string, date: string, id: string): Promise<ManifestReport> {
+  return request(`${organizationPath(slug)}/loading/manifests/${encodeURIComponent(date)}/${encodeURIComponent(id)}`);
+}
+export async function uploadManifest(slug: string, file: File, date: string, car: ManifestCar, vehicleNumber: string, fetchedAt: string, sourceSheet: string): Promise<ManifestReport> {
+  const body = new FormData();
+  body.append('file', file); body.append('date', date); body.append('car', car.key);
+  body.append('vehicle_number', vehicleNumber); body.append('confirm_snapshot_date', '1');
+  body.append('snapshot_fetched_at', fetchedAt); body.append('car_fingerprint', car.fingerprint);
+  body.append('expected_master_seal', car.master_seal || '');
+  body.append('source_sheet', sourceSheet);
+  return request(`${organizationPath(slug)}/loading/manifests`, { method: 'POST', body });
 }
 
 export interface BostaHubOption { id: string; name: string }

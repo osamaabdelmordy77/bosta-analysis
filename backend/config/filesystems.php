@@ -29,6 +29,12 @@ return [
     */
 
     'disks' => [
+        'manifests_private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/loading-manifests'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
 
         'local' => [
             'driver' => 'local',

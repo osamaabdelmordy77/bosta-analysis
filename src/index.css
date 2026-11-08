@@ -1,4 +1,13 @@
 @import "tailwindcss";
+.manifest-page, .manifest-result { display: grid; gap: 18px; min-width: 0; }
+.manifest-confirm { display: flex; align-items: flex-start; gap: 10px; margin-top: 15px; line-height: 1.7; }
+.manifest-confirm input { margin-top: 6px; accent-color: var(--blue); }
+.manifest-car { display: flex; flex-direction: column; gap: 12px; cursor: default; }
+.manifest-car input { width: 100%; min-width: 0; }
+.manifest-result table { min-width: 850px; }
+.manifest-result .manifest-identity { display: block; line-height: 1.7; }
+.manifest-identity p { margin: 8px 0 0; }
+.manifest-page > .receive-filter-panel > .page-filter-control { max-width: 320px; }
 
 .receive-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .receive-tabs button { border: 0; border-bottom: 3px solid transparent; padding: 12px 24px; background: transparent; color: var(--mut); font-weight: 600; }

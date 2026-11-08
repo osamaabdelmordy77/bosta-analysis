@@ -15,7 +15,9 @@ interface CarGroup {
 }
 
 function buildCars(rows: string[][]): CarGroup[] {
-  const starts = (rows[0] || []).flatMap((value, index) => /\bcar\s*\d+\b/i.test(value) ? [index] : []);
+  const carNumber = (value: string, index: number) => value.match(/\b(?:car|alex)\s*(\d+)\b/i)?.[1]
+    || (/^\s*car\s*$/i.test(value) ? rows[0]?.[index + 1]?.trim().match(/^\d+$/)?.[0] : undefined);
+  const starts = (rows[0] || []).flatMap((value, index) => carNumber(value, index) ? [index] : []);
   return starts.map((start, carIndex) => {
     const end = starts[carIndex + 1] ?? Math.max(...rows.map((row) => row.length), start + 1);
     const columns = Array.from({ length: end - start }, (_, index) => start + index)
@@ -34,7 +36,7 @@ function buildCars(rows: string[][]): CarGroup[] {
       return values.some(Boolean) ? [{ sourceRow: localHeaderRow + offset + 2, values }] : [];
     });
     return {
-      name: rows[0][start].trim().replace(/\s+/g, ' ').toUpperCase(),
+      name: `CAR ${Number(carNumber(rows[0][start], start))} · ${rows[0][start].trim().replace(/\s+/g, ' ').toUpperCase()}`,
       start,
       end,
       columns,
@@ -55,15 +57,19 @@ export const CarsSheetSection: React.FC<{ organizationSlug: string }> = ({ organ
   const [selectedCar, setSelectedCar] = useState(0);
   const [search, setSearch] = useState('');
   const [showRaw, setShowRaw] = useState(false);
+  const [date, setDate] = useState(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
+  const [sheetName, setSheetName] = useState('');
 
   useEffect(() => {
     let active = true;
-    getCarsSheet(organizationSlug)
+    setLoading(true); setSnapshot(null); setSelectedCar(0); setSearch(''); setShowRaw(false);
+    if (!date) { setLoading(false); return; }
+    getCarsSheet(organizationSlug, date, sheetName || undefined)
       .then((result) => { if (active) { setSnapshot(result); setError(null); } })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load the Google Sheet.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [organizationSlug, reload]);
+  }, [organizationSlug, reload, date, sheetName]);
 
   const cars = useMemo(() => buildCars(snapshot?.rows || []), [snapshot]);
   const car = cars[selectedCar] || cars[0];
@@ -78,7 +84,7 @@ export const CarsSheetSection: React.FC<{ organizationSlug: string }> = ({ organ
         <div>
           <span className="source-kind">Linked Google Sheet</span>
           <h2>CARS</h2>
-          <p>Master seals, seal entries and source row numbers for every car. Empty source cells remain empty.</p>
+          <p>Master seals and cars from the selected day's worksheet only. Empty source cells remain empty.</p>
         </div>
         <div className="cars-sheet-actions">
           <button type="button" className="btn sm" onClick={() => { setLoading(true); setReload((value) => value + 1); }} disabled={loading}>
@@ -87,6 +93,12 @@ export const CarsSheetSection: React.FC<{ organizationSlug: string }> = ({ organ
           {snapshot && <a className="btn sm" href={snapshot.source_url} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> Open sheet</a>}
         </div>
       </div>
+      <div className="receive-filter-grid">
+        <label className="page-filter-control"><span>CARS day · اليوم</span><input type="date" value={date} onInput={(event) => { setDate(event.currentTarget.value); setSheetName(''); }} /></label>
+        {snapshot && <label className="page-filter-control"><span>Source worksheet · تبويب اليوم</span><select value={snapshot.sheet_name || ''} onChange={(event) => { const tab = snapshot.available_sheets?.find((item) => item.name === event.target.value); if (tab?.date) { setDate(tab.date); setSheetName(tab.name); } }}><option value="">Choose dated tab</option>{snapshot.available_sheets?.filter((tab) => tab.date).sort((a,b) => b.date!.localeCompare(a.date!)).map((tab) => <option key={tab.name} value={tab.name}>{tab.date} · {tab.name}</option>)}</select></label>}
+      </div>
+      {snapshot && <p className="volume-note">Source tab: <strong>{snapshot.sheet_name || 'No matching dated tab'}</strong> · date: {snapshot.sheet_date || date}. Tab dates use day-month-year. Undated tabs are not combined with daily tabs.</p>}
+      {snapshot && !snapshot.sheet_name && <p className="volume-error">{snapshot.selection_required ? 'More than one tab matches this day. Choose the exact tab.' : 'No tab matches this day. Select an available dated worksheet.'}</p>}
 
       {error && <div className="workspace-notice" role="alert">{error}{snapshot && ' Showing the last loaded copy.'}</div>}
       {loading && !snapshot && <div className="cars-sheet-message" role="status">Loading cars from Google Sheets…</div>}

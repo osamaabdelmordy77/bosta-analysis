@@ -3,11 +3,12 @@
 use App\Http\Controllers\AccessCatalogController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CarsSheetController;
 use App\Http\Controllers\BostaMissScanController;
+use App\Http\Controllers\CarsSheetController;
 use App\Http\Controllers\HubController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\LegacyImportController;
+use App\Http\Controllers\LoadingManifestController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ReceiveVolumeExportController;
@@ -51,6 +52,13 @@ Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group
             Route::get('/permissions', [AccessCatalogController::class, 'permissions'])->middleware('permission:roles.view');
             Route::get('/hubs', [HubController::class, 'index']);
             Route::get('/loading/cars', [CarsSheetController::class, 'show']);
+            Route::prefix('loading/manifests')->middleware('permission:shipments.view_all')->group(function (): void {
+                Route::get('/cars', [LoadingManifestController::class, 'cars']);
+                Route::get('/', [LoadingManifestController::class, 'index']);
+                Route::post('/', [LoadingManifestController::class, 'store'])->middleware(['permission:imports.manage', 'throttle:10,1']);
+                Route::get('/{date}/{id}', [LoadingManifestController::class, 'show'])
+                    ->where('date', '\d{4}-\d{2}-\d{2}')->whereUlid('id');
+            });
             Route::prefix('miss-scan')->middleware('permission:shipments.view_all')->group(function (): void {
                 Route::get('/connection', [BostaMissScanController::class, 'status']);
                 Route::post('/connection', [BostaMissScanController::class, 'connect'])->middleware('throttle:auth-login');
