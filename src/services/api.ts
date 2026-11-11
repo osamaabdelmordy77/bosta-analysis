@@ -224,6 +224,40 @@ export async function disconnectBosta(slug: string): Promise<void> {
 export async function getBostaHubs(slug: string): Promise<BostaHubOption[]> {
   return (await request<{ hubs: BostaHubOption[] }>(`${missScanPath(slug)}/hubs`)).hubs;
 }
+export async function getBostaDispatchSealsPage(
+  slug: string,
+  sourceHubId: string,
+  page: number,
+  destinationHubId = '',
+  signal?: AbortSignal,
+  allStates = false,
+): Promise<unknown> {
+  const query = new URLSearchParams({ source_hub_id: sourceHubId });
+  if (destinationHubId) query.set('destination_hub_id', destinationHubId);
+  if (allStates) query.set('all_states', '1');
+  const result = await request<{ result: unknown }>(`${missScanPath(slug)}/seals/pages/${page}?${query}`, { signal });
+  return result.result;
+}
+export async function getBostaMasterSealsPage(
+  slug: string,
+  page: number,
+  destinationHubId: string,
+  createdAtStart: string,
+  createdAtEnd: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const query = new URLSearchParams({
+    destination_hub_id: destinationHubId,
+    created_at_start: createdAtStart,
+    created_at_end: createdAtEnd,
+  });
+  const result = await request<{ result: unknown }>(`${missScanPath(slug)}/master-seals/pages/${page}?${query}`, { signal });
+  return result.result;
+}
+export async function getBostaMasterSealManifest(slug: string, sealNumber: string, signal?: AbortSignal): Promise<unknown> {
+  const result = await request<{ result: unknown }>(`${missScanPath(slug)}/master-seals/${encodeURIComponent(sealNumber)}/manifest`, { signal });
+  return result.result;
+}
 export async function getBostaMissScanCount(slug: string, hubId: string): Promise<number> {
   return (await request<{ count: number }>(`${missScanPath(slug)}/count?hub_id=${encodeURIComponent(hubId)}`)).count;
 }
@@ -232,6 +266,44 @@ export async function getBostaMissScanPage(slug: string, hubId: string, page: nu
 }
 export async function getBostaDeliveryDetails(slug: string, id: string): Promise<BostaLiveDelivery | null> {
   return (await request<{ delivery: BostaLiveDelivery | null }>(`${missScanPath(slug)}/deliveries/${encodeURIComponent(id)}`)).delivery;
+}
+export async function getBostaHistoryCount(slug: string, hubId: string, stateCodes: string[], signal?: AbortSignal): Promise<number> {
+  const result = await request<{ count: number }>(`${missScanPath(slug)}/history/count`, {
+    method: 'POST', body: JSON.stringify({ hub_id: hubId, state_codes: stateCodes }), signal,
+  });
+  return result.count;
+}
+export async function getBostaHistoryPage(
+  slug: string,
+  hubId: string,
+  stateCodes: string[],
+  page: number,
+  pageLimit: number,
+  signal?: AbortSignal,
+): Promise<BostaLiveDelivery[]> {
+  const result = await request<{ deliveries: BostaLiveDelivery[] }>(`${missScanPath(slug)}/history/pages/${page}`, {
+    method: 'POST',
+    body: JSON.stringify({ hub_id: hubId, state_codes: stateCodes, page_limit: pageLimit }),
+    signal,
+  });
+  return result.deliveries;
+}
+export async function getBostaHistoryDetailsBatch(slug: string, ids: string[], signal?: AbortSignal): Promise<BostaLiveDelivery[]> {
+  const result = await request<{ deliveries: BostaLiveDelivery[] }>(`${missScanPath(slug)}/history/details`, {
+    method: 'POST', body: JSON.stringify({ ids }), signal,
+  });
+  return result.deliveries;
+}
+export async function lookupBostaHistoryDeliveries(
+  slug: string,
+  hubId: string,
+  trackingNumbers: string[],
+  signal?: AbortSignal,
+): Promise<BostaLiveDelivery[]> {
+  const result = await request<{ deliveries: BostaLiveDelivery[] }>(`${missScanPath(slug)}/history/lookup`, {
+    method: 'POST', body: JSON.stringify({ hub_id: hubId, tracking_numbers: trackingNumbers }), signal,
+  });
+  return result.deliveries;
 }
 
 export async function downloadReceiveVolumePivot(slug: string, rows: VolumeSummary[]): Promise<void> {

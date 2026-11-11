@@ -64,9 +64,16 @@ Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group
                 Route::post('/connection', [BostaMissScanController::class, 'connect'])->middleware('throttle:auth-login');
                 Route::delete('/connection', [BostaMissScanController::class, 'disconnect']);
                 Route::get('/hubs', [BostaMissScanController::class, 'hubs']);
+                Route::get('/seals/pages/{page}', [BostaMissScanController::class, 'sealsPage'])->whereNumber('page');
+                Route::get('/master-seals/pages/{page}', [BostaMissScanController::class, 'masterSealsPage'])->whereNumber('page');
+                Route::get('/master-seals/{sealNumber}/manifest', [BostaMissScanController::class, 'masterSealManifest']);
                 Route::get('/count', [BostaMissScanController::class, 'count']);
                 Route::get('/pages/{page}', [BostaMissScanController::class, 'page'])->whereNumber('page');
                 Route::get('/deliveries/{deliveryId}', [BostaMissScanController::class, 'details']);
+                Route::post('/history/count', [BostaMissScanController::class, 'historyCount']);
+                Route::post('/history/pages/{page}', [BostaMissScanController::class, 'historyPage'])->whereNumber('page');
+                Route::post('/history/details', [BostaMissScanController::class, 'historyDetails']);
+                Route::post('/history/lookup', [BostaMissScanController::class, 'historyLookup']);
             });
             Route::get('/hubs/{hub}', [HubController::class, 'show']);
             Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view');

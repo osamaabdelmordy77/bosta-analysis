@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clock3, Copy, Download, ExternalLink, Filter, KeyRound, RefreshCw, ScanLine, Search, X } from 'lucide-react';
 import {
-  ApiError, BostaHubOption, BostaLiveDelivery, connectBosta, disconnectBosta, getBostaConnection,
+  ApiError, BostaHubOption, BostaLiveDelivery, getBostaConnection,
   getBostaDeliveryDetails, getBostaHubs, getBostaMissScanCount, getBostaMissScanPage,
 } from '../services/api';
 import { buildMissScanRows, deliveryHistory, duration, historyLabel, historyTime, MissScanRow } from '../utils/missScan';
@@ -26,7 +26,6 @@ export const MissScanSection: React.FC<{ organizationSlug: string }> = ({ organi
   const [connected, setConnected] = useState(false);
   const [checking, setChecking] = useState(true);
   const [restricted, setRestricted] = useState(false);
-  const [tokenInput, setTokenInput] = useState('');
   const [hubs, setHubs] = useState<BostaHubOption[]>([]);
   const [hubId, setHubId] = useState('');
   const [deliveries, setDeliveries] = useState<BostaLiveDelivery[]>([]);
@@ -138,29 +137,14 @@ export const MissScanSection: React.FC<{ organizationSlug: string }> = ({ organi
     const link = document.createElement('a'); link.href = url; link.download = `bosta-miss-scan-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
-  const connect = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setLoading(true); setError(null);
-    try {
-      const options = await connectBosta(organizationSlug, tokenInput);
-      const available = options.length ? options : [{ id: DEFAULT_HUB, name: 'Alex Sorting Facility' }];
-      setTokenInput(''); setHubs(available); setHubId(available.find((item) => item.id === DEFAULT_HUB)?.id || available[0].id); setConnected(true);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not connect to Bosta.'); }
-    finally { setLoading(false); }
-  };
-  const disconnect = async () => {
-    await disconnectBosta(organizationSlug);
-    setConnected(false); setDeliveries([]); setLoadedHubId(''); setHubs([]); setHubId(''); setUpdatedAt(null);
-  };
-
   if (checking) return <section className="miss-panel" role="status">Checking Bosta connection…</section>;
   if (restricted) return <section className="miss-panel" role="alert">Your role does not allow viewing organization-wide live shipments.</section>;
   return <div className="miss-scan">
     <section className="miss-panel miss-intro"><div><span className="source-kind">Bosta Admin live API</span><h2>Miss Scan inspection</h2><p>Received at the warehouse without a Ready to Dispatch scan. These shipments may be delayed.</p></div>
-      {connected && <div className="miss-actions"><button type="button" className="btn sm" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw size={15} /> Refresh</button><button type="button" className="btn sm" onClick={() => void disconnect()}>Disconnect token</button></div>}
+      {connected && <div className="miss-actions"><button type="button" className="btn sm" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw size={15} /> Refresh</button></div>}
     </section>
     {error && <div className="workspace-notice" role="alert">{error}</div>}
-    {!connected && <form className="miss-panel miss-connect" onSubmit={(event) => void connect(event)}><KeyRound size={20} /><div><h3>Connect your Bosta account</h3><p>Enter the same Bearer Token used by the other dashboard. It stays encrypted in your server session and is never shown to other users.</p></div><label><span className="sr-only">Bosta access token</span><input type="password" autoComplete="off" value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} placeholder="Bearer token" required /></label><button type="submit" className="btn pri" disabled={loading}>Connect</button></form>}
+    {!connected && <section className="miss-panel miss-connect"><KeyRound size={20} /><div><h3>Connect your Bosta account</h3><p>Use the shared Bosta token field in the fixed header. It is stored in this browser and validated through the secure organization session.</p></div></section>}
     {connected && <>
       <div className="miss-summary">{[['Total Miss Scan', rows.length, ScanLine], ['Over 1 hour', rows.filter((row) => row.minutes >= 60).length, Clock3], ['Over 2 hours', rows.filter((row) => row.minutes >= 120).length, AlertTriangle], ['Over 3 hours', rows.filter((row) => row.minutes >= 180).length, AlertTriangle]].map(([label, value, Icon]) => {
         const SummaryIcon = Icon as typeof ScanLine;

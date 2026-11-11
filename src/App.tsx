@@ -18,7 +18,10 @@ import {
   AccessRole,
   AuthUser,
   ApiError,
+  connectBosta,
   getAccessCatalog,
+  getBostaConnection,
+  getBostaHubs,
   getImportJobs,
   getAllShipments,
   getCurrentUser,
@@ -47,8 +50,12 @@ import { AnalyticsCardsSection } from './components/AnalyticsCardsSection';
 import { ShipmentExplorerSection } from './components/ShipmentExplorerSection';
 import { ReceiveSheetsSection } from './components/ReceiveSheetsSection';
 import { CarsSheetSection } from './components/CarsSheetSection';
-import { LoadingManifestSection } from './components/LoadingManifestSection';
+import { WrongShipmentsProvider } from './contexts/WrongShipmentsContext';
+import { WrongShipmentsPage } from './pages/WrongShipmentsPage';
+import { WrongShipmentsPage as LoadingManifestWrongShipmentsPage } from './pages/LoadingManifestWrongShipmentsPage';
 import { MissScanSection } from './components/MissScanSection';
+import { TransferHistorySection } from './components/TransferHistorySection';
+import { LoadingCheckSection } from './components/LoadingCheckSection';
 import { SortSheetsSection } from './components/SortSheetsSection';
 import { ProfileSection } from './components/ProfileSection';
 import { UploadModal, PendingFile } from './components/UploadModal';
@@ -77,9 +84,24 @@ import {
 } from 'lucide-react';
 
 type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Users' | 'Roles & Permissions';
-type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Miss Scan' | 'mainfest';
+type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
 type AccessLoadState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
 type PageFilters = Record<WorkspacePage, Record<'Sheets' | 'Live', FilterState>>;
+
+const BOSTA_TOKEN_STORAGE_KEY = 'bosta-admin-dashboard-access-token';
+const LEGACY_BOSTA_TOKEN_KEYS = ['bosta_dispatch_monitor_access_token', 'BOSTA_AUTH_TOKEN'];
+
+function readSavedBostaToken(): string {
+  try {
+    const saved = localStorage.getItem(BOSTA_TOKEN_STORAGE_KEY);
+    if (saved) return saved;
+    const legacy = LEGACY_BOSTA_TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) || '';
+    if (legacy) localStorage.setItem(BOSTA_TOKEN_STORAGE_KEY, legacy);
+    return legacy;
+  } catch {
+    return '';
+  }
+}
 
 function createDefaultFilters(): FilterState {
   return {
@@ -141,6 +163,11 @@ function nextFrame(): Promise<void> {
 }
 
 export default function App() {
+  const [bostaToken, setBostaToken] = useState(readSavedBostaToken);
+  const [bostaConnection, setBostaConnection] = useState<'checking' | 'connecting' | 'connected' | 'disconnected' | 'error'>('checking');
+  const [bostaConnectionError, setBostaConnectionError] = useState('');
+  const [bostaConnectionVersion, setBostaConnectionVersion] = useState(0);
+  const bostaRequestIdRef = useRef(0);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [importJobs, setImportJobs] = useState<ImportJob[]>([]);
   const importJobsRef = useRef<ImportJob[]>([]);
@@ -167,7 +194,7 @@ export default function App() {
     Users: 'Live',
     'Roles & Permissions': 'Live',
   });
-  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Miss Scan': null, mainfest: null });
+  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
   const [accessFiltersByPage, setAccessFiltersByPage] = useState<Record<'Users' | 'Roles & Permissions', Record<string, string>>>({
     Users: { role: '', status: '' },
     'Roles & Permissions': { group: '', scope: '' },
@@ -206,15 +233,78 @@ export default function App() {
     'Roles & Permissions': '',
   });
   const activeTab = pageTabs[activePage];
-  const filterTab = activeTab === 'CARS' || activeTab === 'Miss Scan' || activeTab === 'mainfest' ? 'Sheets' : activeTab;
+  const filterTab = activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Time Analysis'
+    || activeTab === 'Removed Seals' || activeTab === 'Seal Logs' || activeTab === 'mainfest' || activeTab === 'Wrong Shipments' ? 'Sheets' : activeTab;
   const canViewMissScan = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager', 'analyst', 'auditor'].includes(activeOrganization?.role?.slug || ''));
-  const availableTabs: WorkspaceTab[] = activePage === 'Loading' ? ['Sheets', 'Live', 'CARS', 'mainfest']
-    : activePage === 'Transfer' && canViewMissScan ? ['Sheets', 'Live', 'Miss Scan'] : ['Sheets', 'Live'];
+  const availableTabs: WorkspaceTab[] = activePage === 'Receive' && canViewMissScan ? ['Sheets', 'Live', 'Wrong Shipments']
+    : activePage === 'Loading' ? ['Sheets', 'Live', 'CARS', 'Loading Check', 'mainfest']
+    : activePage === 'Transfer' && canViewMissScan ? ['Sheets', 'Live', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'] : ['Sheets', 'Live'];
   useEffect(() => {
     if (!canViewMissScan) {
-      setPageTabs((previous) => previous.Transfer === 'Miss Scan' ? { ...previous, Transfer: 'Sheets' } : previous);
+      setPageTabs((previous) => {
+        const next = { ...previous };
+        if (['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(previous.Transfer)) next.Transfer = 'Sheets';
+        if (previous.Receive === 'Wrong Shipments') next.Receive = 'Sheets';
+        return next;
+      });
     }
   }, [canViewMissScan]);
+
+  useEffect(() => {
+    const slug = activeOrganization?.slug;
+    if (!slug) return;
+    let active = true;
+    const requestId = ++bostaRequestIdRef.current;
+    setBostaConnection('checking');
+    setBostaConnectionError('');
+    const savedToken = bostaToken.trim();
+    void (async () => {
+      if (savedToken) {
+        setBostaConnection('connecting');
+        await connectBosta(slug, savedToken);
+        if (!active || bostaRequestIdRef.current !== requestId) return;
+        setBostaConnection('connected');
+        setBostaConnectionVersion((value) => value + 1);
+        return;
+      }
+      const connected = await getBostaConnection(slug);
+      if (!active || bostaRequestIdRef.current !== requestId) return;
+      if (connected) {
+        await getBostaHubs(slug);
+        if (!active || bostaRequestIdRef.current !== requestId) return;
+        setBostaConnection('connected');
+        return;
+      }
+      setBostaConnection('disconnected');
+    })().catch((error: unknown) => {
+      if (!active || bostaRequestIdRef.current !== requestId) return;
+      setBostaConnection('error');
+      setBostaConnectionError(error instanceof Error ? error.message : 'Could not check the Bosta connection.');
+    });
+    return () => { active = false; };
+  }, [activeOrganization?.slug]);
+
+  const handleBostaConnect = useCallback(async () => {
+    const slug = activeOrganization?.slug;
+    const token = bostaToken.trim();
+    if (!slug || !token) return;
+    const requestId = ++bostaRequestIdRef.current;
+    const shouldReloadBostaPages = bostaConnection !== 'connected' || token !== readSavedBostaToken();
+    setBostaConnection('connecting');
+    setBostaConnectionError('');
+    try {
+      await connectBosta(slug, token);
+      if (bostaRequestIdRef.current !== requestId) return;
+      try { localStorage.setItem(BOSTA_TOKEN_STORAGE_KEY, token); } catch { /* The active server session still works if browser storage is blocked. */ }
+      setBostaToken(token);
+      setBostaConnection('connected');
+      if (shouldReloadBostaPages) setBostaConnectionVersion((value) => value + 1);
+    } catch (error) {
+      if (bostaRequestIdRef.current !== requestId) return;
+      setBostaConnection('error');
+      setBostaConnectionError(error instanceof Error ? error.message : 'Could not connect to Bosta.');
+    }
+  }, [activeOrganization?.slug, bostaConnection, bostaToken]);
   const filters = filtersByPage[activePage][filterTab];
   const setFilters = useCallback<React.Dispatch<React.SetStateAction<FilterState>>>((next) => {
     setFiltersByPage((previous) => ({
@@ -747,9 +837,10 @@ export default function App() {
       [activePage]: { ...previous[activePage], [key]: value },
     }));
   };
-  const pageSource = activePage === 'Transfer' && activeTab === 'Miss Scan' ? 'Bosta Admin live API · session token'
+  const pageSource = (activePage === 'Transfer' && ['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab))
+    || (activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab))
+    || (activePage === 'Receive' && activeTab === 'Wrong Shipments') ? 'Bosta Admin live API · shared browser token'
     : activeTab === 'CARS' ? 'Linked Google Sheet · CARS'
-    : activeTab === 'mainfest' ? 'CARS snapshot × uploaded Master Seal manifest · car and day'
     : activeTab === 'Sheets'
     ? isOperationsPage
       ? files.length > 0 ? 'Imported workbook snapshots · organization database' : 'Organization imports API · awaiting reports'
@@ -908,6 +999,11 @@ export default function App() {
           totalShipments={shipments.length}
           filteredShipments={filteredShipments.length}
           backendStatus={backendStatus}
+          bostaToken={bostaToken}
+          bostaConnection={bostaConnection}
+          bostaConnectionError={bostaConnectionError}
+          onBostaTokenChange={setBostaToken}
+          onBostaConnect={() => void handleBostaConnect()}
           currentUser={currentUser}
           organizations={organizations}
           activeOrganization={activeOrganization}
@@ -946,15 +1042,27 @@ export default function App() {
             <div className="page-heading-copy">
               <p className="page-eyebrow">{activeOrganization.name}</p>
               <h1 ref={pageHeadingRef} tabIndex={-1}>{activePage}</h1>
-              <p className="page-description">{activePage === 'Transfer' && activeTab === 'Miss Scan'
+              <p className="page-description">{activePage === 'Loading' && activeTab === 'Loading Check'
+                ? 'Validate seal numbers against live Bosta data and record the assigned hub in the local dispatch sheet.'
+                : activePage === 'Loading' && activeTab === 'mainfest'
+                ? 'Track Master Seal shipments from Alex Sorting Facility to the Wrong Shipments destination hubs and Cairo Sorting Facility.'
+                : activePage === 'Receive' && activeTab === 'Wrong Shipments'
+                ? 'Review the original Wrong Shipments report for Master Seals sent to Alex Sorting Facility.'
+                : activePage === 'Transfer' && activeTab === 'Miss Scan'
                 ? 'Monitor Bosta Admin shipments received without a Ready to Dispatch scan.'
-                : pageDescriptions[activePage]}</p>
+                : activePage === 'Transfer' && activeTab === 'Time Analysis'
+                  ? 'Measure hub processing time from receipt through Ready to Dispatch.'
+                  : activePage === 'Transfer' && activeTab === 'Removed Seals'
+                    ? 'Review shipments removed from seals and the related audit history.'
+                    : activePage === 'Transfer' && activeTab === 'Seal Logs'
+                      ? 'Review seal assignment, removal, and close events from shipment audit logs.'
+                      : pageDescriptions[activePage]}</p>
               <div className="page-source-meta">
                 <span><strong>Source</strong> {pageSource}</span>
-                {activeTab !== 'Miss Scan' && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
+                {!['Loading Check', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
               </div>
             </div>
-            {activeTab === 'Miss Scan' || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage ? (
+            {['Loading Check', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage ? (
               <button type="button" className="btn pri page-primary-action" onClick={() => setIsUploadOpen(true)}>
                 <Upload size={16} /><span>{activePage === 'Receive' ? 'Upload reports' : 'Add source report'}</span>
               </button>
@@ -966,7 +1074,7 @@ export default function App() {
             )}
           </section>
 
-          <div className="page-tabs" role="tablist" aria-label={`${activePage} views`}>
+          <div className={`page-tabs${activePage === 'Transfer' ? ' transfer-page-tabs' : ''}`} role="tablist" aria-label={`${activePage} views`}>
             {availableTabs.map((tab) => (
               <button
                 key={tab}
@@ -996,10 +1104,10 @@ export default function App() {
             ))}
           </div>
 
-          {activeTab !== 'Miss Scan' && activeTab !== 'CARS' && activeTab !== 'mainfest' && !(activePage === 'Receive' && activeTab === 'Sheets') && (
+          {!['Loading Check', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'CARS', 'mainfest', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Receive' && activeTab === 'Sheets') && (
             <PageFilterPanel
               page={activePage}
-              tab={activeTab}
+              tab={activeTab as 'Sheets' | 'Live'}
               centerLabel={hubBasis}
               filters={filters}
               onFilterChange={setFilters}
@@ -1084,7 +1192,7 @@ export default function App() {
         </div>
       )}
 
-      {loadError ? (
+      {loadError && !(activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab)) && !(activePage === 'Receive' && activeTab === 'Wrong Shipments') ? (
         <section className="source-empty-state">
           <div className="empty-icon"><AlertTriangle size={21} /></div>
           <span className="source-kind">Organization data unavailable</span>
@@ -1104,12 +1212,24 @@ export default function App() {
             <RefreshCw size={16} /><span>Try again</span>
           </button>
         </section>
+      ) : activePage === 'Loading' && activeTab === 'Loading Check' ? (
+        <WrongShipmentsProvider key={`${activeOrganization.slug}:${bostaConnectionVersion}:loading-check`} organizationSlug={activeOrganization.slug} direction="from-alex">
+          <LoadingCheckSection organizationSlug={activeOrganization.slug} />
+        </WrongShipmentsProvider>
       ) : activePage === 'Transfer' && activeTab === 'Miss Scan' && canViewMissScan ? (
-        <MissScanSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
+        <MissScanSection key={`${activeOrganization.slug}:${bostaConnectionVersion}`} organizationSlug={activeOrganization.slug} />
+      ) : activePage === 'Transfer' && ['Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab) && canViewMissScan ? (
+        <TransferHistorySection key={`${activeOrganization.slug}:${bostaConnectionVersion}`} organizationSlug={activeOrganization.slug} tab={activeTab as 'Time Analysis' | 'Removed Seals' | 'Seal Logs'} />
+      ) : activePage === 'Receive' && activeTab === 'Wrong Shipments' && canViewMissScan ? (
+        <WrongShipmentsProvider key={`${activeOrganization.slug}:${bostaConnectionVersion}:inbound`} organizationSlug={activeOrganization.slug} direction="to-alex">
+          <WrongShipmentsPage />
+        </WrongShipmentsProvider>
       ) : activePage === 'Loading' && activeTab === 'CARS' ? (
         <CarsSheetSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
       ) : activePage === 'Loading' && activeTab === 'mainfest' ? (
-        <LoadingManifestSection key={activeOrganization.slug} organizationSlug={activeOrganization.slug} canUpload={Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager'].includes(activeOrganization.role?.slug || ''))} />
+        <WrongShipmentsProvider key={`${activeOrganization.slug}:${bostaConnectionVersion}:outbound`} organizationSlug={activeOrganization.slug} direction="from-alex">
+          <LoadingManifestWrongShipmentsPage />
+        </WrongShipmentsProvider>
       ) : isOperationsPage && activeTab === 'Live' ? (
         <section className="source-empty-state">
           <div className="empty-icon"><RefreshCw size={21} /></div>

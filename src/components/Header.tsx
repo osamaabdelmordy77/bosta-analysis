@@ -4,12 +4,19 @@ import { FolderKanban, Menu, ShieldCheck, Trash2, Upload, LogOut } from 'lucide-
 import { BackendConnectionStatus } from '../services/backend';
 import { AuthUser, OrganizationOption } from '../services/api';
 
+type BostaConnectionState = 'checking' | 'connecting' | 'connected' | 'disconnected' | 'error';
+
 interface HeaderProps {
   pageTitle: string;
   files: UploadedFile[];
   totalShipments: number;
   filteredShipments: number;
   backendStatus: BackendConnectionStatus | null;
+  bostaToken: string;
+  bostaConnection: BostaConnectionState;
+  bostaConnectionError: string;
+  onBostaTokenChange: (token: string) => void;
+  onBostaConnect: () => void;
   currentUser: AuthUser;
   organizations: OrganizationOption[];
   activeOrganization: OrganizationOption;
@@ -29,6 +36,11 @@ export const Header: React.FC<HeaderProps> = ({
   totalShipments,
   filteredShipments,
   backendStatus,
+  bostaToken,
+  bostaConnection,
+  bostaConnectionError,
+  onBostaTokenChange,
+  onBostaConnect,
   currentUser,
   organizations,
   activeOrganization,
@@ -82,6 +94,27 @@ export const Header: React.FC<HeaderProps> = ({
           </select>
         ) : <strong title={activeOrganization.name}>{activeOrganization.name}</strong>}
       </div>
+      <form
+        className={`top-bosta-token${bostaConnection === 'connected' ? ' is-connected' : ''}${bostaConnection === 'error' ? ' has-error' : ''}`}
+        onSubmit={(event) => { event.preventDefault(); onBostaConnect(); }}
+        aria-label="Bosta API connection"
+      >
+        <label className="sr-only" htmlFor="global-bosta-token">Bosta access token</label>
+        <input
+          id="global-bosta-token"
+          type="password"
+          autoComplete="off"
+          value={bostaToken}
+          onChange={(event) => onBostaTokenChange(event.target.value)}
+          placeholder="Bosta API token"
+          aria-describedby={bostaConnectionError ? 'global-bosta-token-error' : undefined}
+        />
+        <button type="submit" className="bosta-token-submit" disabled={!bostaToken.trim() || bostaConnection === 'connecting'} title={bostaConnectionError || (bostaConnection === 'connected' ? 'Bosta token is connected.' : 'Connect to Bosta')}>
+          <span className="bosta-token-light" aria-hidden="true" />
+          <span>{bostaConnection === 'connecting' ? 'Connecting' : bostaConnection === 'checking' ? 'Checking' : bostaConnection === 'connected' ? 'Connected' : bostaConnection === 'error' ? 'Retry' : 'Connect'}</span>
+        </button>
+        {bostaConnectionError && <span id="global-bosta-token-error" className="bosta-token-error" role="status" title={bostaConnectionError}>{bostaConnectionError}</span>}
+      </form>
       <div className="top-spacer" />
       <div
         className={`connection-status ${backendStatus === 'connected' ? 'is-connected' : backendStatus === 'unavailable' ? 'is-offline' : backendStatus === 'checking' ? 'is-checking' : 'is-unknown'}`}
