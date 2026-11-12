@@ -32,6 +32,7 @@ export interface ShipmentRecord {
   rawDate?: string | null;
   pickedUpDate?: string | null;
   receivedTime?: string | null;
+  firstReceivingBy?: string | null;
   sourceSheetIndex?: number;
   sourceRowNumber?: number;
 }

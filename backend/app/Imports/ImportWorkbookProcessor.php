@@ -18,7 +18,7 @@ class ImportWorkbookProcessor
         private readonly ImportBenchmarkMetrics $metrics,
     ) {}
 
-    public function process(string $organizationId, string $fileId, string $runId): void
+    public function process(string $organizationId, string $fileId, string $runId, int $batchIndex = 0): void
     {
         $startedAt = hrtime(true);
         $workerStartedWall = now();
@@ -41,9 +41,13 @@ class ImportWorkbookProcessor
             $queueWaitMs = $run->queued_at === null ? null
                 : max(0, Carbon::parse($run->queued_at)->diffInMilliseconds($workerStartedWall));
 
+            $processingBatchLimit = max(1000, min(200000, (int) config('import_ingestion.processing_batch_rows', 200000)));
+            $processingBatchCount = max(1, (int) config('import_ingestion.processing_batch_count', 3));
+            abort_unless($batchIndex >= 0 && $batchIndex < $processingBatchCount, 404, 'Import processing batch not found.');
+
             $now = now();
             DB::table('import_runs')->where('id', $runId)->where('organization_id', $organizationId)->update([
-                'processing_state' => 'parsing',
+                'processing_state' => $batchIndex === 0 ? 'parsing' : 'importing',
                 'processing_error_code' => null,
                 'processing_error' => null,
                 'processing_started_at' => DB::raw('COALESCE(processing_started_at, '.DB::connection()->getPdo()->quote($now->toDateTimeString()).')'),
@@ -95,10 +99,10 @@ class ImportWorkbookProcessor
             $candidateIndexes = array_fill_keys(array_map('intval', array_column($inspection['selected_sheets'], 'index')), true);
             $hubLabels = $inspection['hub_labels'];
             $seenTracking = [];
-            $validRecordNumber = 0;
+            $validRecordNumber = $batchIndex * $processingBatchLimit;
             $pendingRows = [];
             $activeSheetIndex = null;
-            $chunkIndex = 0;
+            $chunkIndex = $batchIndex * 2000;
             $observedRows = 0;
             // Existing runs used 400 rows. New runs retain their original saved size on retry.
             $rowsPerChunk = max(100, min(2000, (int) ($options['source_chunk_rows'] ?? 400)));
@@ -125,11 +129,11 @@ class ImportWorkbookProcessor
             };
 
             $phaseStartedAt = hrtime(true);
-            foreach ($this->reader->rows($pathResult['path'], $inspection) as $row) {
+            foreach ($this->reader->rows($pathResult['path'], $inspection, $batchIndex, $processingBatchLimit) as $row) {
                 $sheetIndex = (int) $row['sheet']['index'];
                 if ($activeSheetIndex !== null && $activeSheetIndex !== $sheetIndex) {
                     $flush();
-                    $chunkIndex = 0;
+                    $chunkIndex = $batchIndex * 2000;
                 }
                 $activeSheetIndex = $sheetIndex;
                 $dashboardRecord = isset($candidateIndexes[$sheetIndex])
@@ -152,6 +156,10 @@ class ImportWorkbookProcessor
             $this->metrics->addPhase('chunk_ingestion_and_progress_wall_ms', $flushMilliseconds);
             $this->metrics->addPhase('reader_and_dashboard_wall_ms', max(0, $readAndIngestMilliseconds - $flushMilliseconds));
 
+            if ($batchIndex < $processingBatchCount - 1) {
+                return;
+            }
+
             $prepublicationStartedAt = hrtime(true);
             $currentRun = DB::table('import_runs')->where('id', $runId)->where('organization_id', $organizationId)->first();
             $observedRows = (int) $currentRun->source_rows_count;
@@ -168,7 +176,7 @@ class ImportWorkbookProcessor
             $this->metrics->addPhase('prepublication_checks_wall_ms', (hrtime(true) - $prepublicationStartedAt) / 1_000_000);
             $this->publication->publish($organizationId, $fileId, $runId, function () use (
                 $inspection, $currentRun, $observedRows, $warningCount, $startedAt, $queueWaitMs,
-                $options, $file, $content, $runId,
+                $options, $file, $content, $runId, $batchIndex, $processingBatchCount, $processingBatchLimit,
             ): array {
                 $summary = $this->metrics->finish();
                 $summary['query_measurement_enabled'] = (bool) config('import_benchmark.enabled');
@@ -191,6 +199,9 @@ class ImportWorkbookProcessor
                 $summary['sheets_selected'] = count($inspection['selected_sheets']);
                 $summary['format'] = $inspection['format'];
                 $summary['source_rows'] = $observedRows;
+                $summary['processing_batch_index'] = $batchIndex + 1;
+                $summary['processing_batch_count'] = $processingBatchCount;
+                $summary['processing_batch_rows'] = $processingBatchLimit;
                 $summary['counts'] = [
                     'accepted' => (int) $currentRun->accepted_rows_count,
                     'duplicates' => (int) $currentRun->duplicate_rows_count,

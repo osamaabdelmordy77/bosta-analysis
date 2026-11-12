@@ -5,6 +5,7 @@ import {
   getBostaDeliveryDetails, getBostaHubs, getBostaMissScanCount, getBostaMissScanPage,
 } from '../services/api';
 import { buildMissScanRows, deliveryHistory, duration, historyLabel, historyTime, MissScanRow } from '../utils/missScan';
+import { classifyAssignedHub, SORT_AREAS, UNKNOWN_AREA } from '../utils/sortAreas';
 
 const PAGE_SIZE = 100;
 const BOSTA_PAGE_SIZE = 200;
@@ -22,7 +23,7 @@ function MultiFilter({ label, options, value, onChange }: { label: string; optio
   </div></details>;
 }
 
-export const MissScanSection: React.FC<{ organizationSlug: string }> = ({ organizationSlug }) => {
+export const MissScanSection: React.FC<{ organizationSlug: string; sortingVolume?: boolean }> = ({ organizationSlug, sortingVolume = false }) => {
   const [connected, setConnected] = useState(false);
   const [checking, setChecking] = useState(true);
   const [restricted, setRestricted] = useState(false);
@@ -42,6 +43,8 @@ export const MissScanSection: React.FC<{ organizationSlug: string }> = ({ organi
   const [types, setTypes] = useState<string[]>([]);
   const [minimumHours, setMinimumHours] = useState(0);
   const [minimumDays, setMinimumDays] = useState(0);
+  const [sortingArea, setSortingArea] = useState('A');
+  const [sortingAreaHub, setSortingAreaHub] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<MissScanRow | null>(null);
   const [details, setDetails] = useState<BostaLiveDelivery | null>(null);
@@ -114,33 +117,60 @@ export const MissScanSection: React.FC<{ organizationSlug: string }> = ({ organi
 
   const hub = hubs.find((item) => item.id === hubId);
   const rows = useMemo(() => buildMissScanRows(loadedHubId === hubId ? deliveries : [], hubId, hub?.name || '', clock), [deliveries, loadedHubId, hubId, hub?.name, clock]);
+  const areaRows = useMemo(() => rows.map((row) => ({ row, ...classifyAssignedHub(row.assignedHub) })), [rows]);
   const businessOptions = useMemo(() => [...new Set(rows.map((row) => row.business))].sort(), [rows]);
   const hubOptions = useMemo(() => [...new Set(rows.map((row) => row.assignedHub))].sort(), [rows]);
   const typeOptions = useMemo(() => [...new Set(rows.map((row) => row.type))].sort(), [rows]);
-  const filtered = useMemo(() => rows.filter((row) => {
+  const filteredBase = useMemo(() => areaRows.filter(({ row }) => {
     const term = search.trim().toLowerCase();
     return row.minutes >= Math.max(minimumHours * 60, minimumDays * 1440)
       && (!term || [row.trackingNumber, row.business, row.assignedHub].some((value) => value.toLowerCase().includes(term)))
       && (!businessSearch || row.business.toLowerCase().includes(businessSearch.trim().toLowerCase()))
       && (!businesses.length || businesses.includes(row.business))
-      && (!assignedHubs.length || assignedHubs.includes(row.assignedHub))
       && (!types.length || types.includes(row.type));
-  }), [rows, search, businessSearch, businesses, assignedHubs, types, minimumHours, minimumDays]);
+  }), [areaRows, search, businessSearch, businesses, types, minimumHours, minimumDays]);
+  const filtered = useMemo(() => filteredBase
+    .filter(({ row, area, hub: assignedHub }) => sortingVolume
+      ? area === sortingArea && (!sortingAreaHub || assignedHub === sortingAreaHub)
+      : !assignedHubs.length || assignedHubs.includes(row.assignedHub))
+    .map(({ row }) => row), [filteredBase, sortingVolume, sortingArea, sortingAreaHub, assignedHubs]);
+  const areaCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of filteredBase) counts.set(entry.area, (counts.get(entry.area) ?? 0) + 1);
+    return counts;
+  }, [filteredBase]);
+  const sortingAreas = useMemo(() => [...SORT_AREAS, { code: UNKNOWN_AREA, name: 'Unmapped / بدون تصنيف', hubs: [] as string[] }]
+    .sort((left, right) => (areaCounts.get(right.code) ?? 0) - (areaCounts.get(left.code) ?? 0)
+      || left.code.localeCompare(right.code)), [areaCounts]);
+  const sortingAreaHubs = useMemo(() => {
+    const definition = SORT_AREAS.find((item) => item.code === sortingArea);
+    return definition
+      ? [...definition.hubs]
+      : [...new Set(filteredBase.filter((entry) => entry.area === UNKNOWN_AREA).map((entry) => entry.hub))].sort((left, right) => left.localeCompare(right));
+  }, [filteredBase, sortingArea]);
+  const sortingHubCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of filteredBase) {
+      if (entry.area === sortingArea) counts.set(entry.hub, (counts.get(entry.hub) ?? 0) + 1);
+    }
+    return counts;
+  }, [filteredBase, sortingArea]);
+  const selectedSortingArea = sortingAreas.find((item) => item.code === sortingArea);
   const shown = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const clearFilters = () => { setSearch(''); setBusinessSearch(''); setBusinesses([]); setAssignedHubs([]); setTypes([]); setMinimumHours(0); setMinimumDays(0); setPage(1); };
+  const clearFilters = () => { setSearch(''); setBusinessSearch(''); setBusinesses([]); setAssignedHubs([]); setTypes([]); setMinimumHours(0); setMinimumDays(0); setSortingArea('A'); setSortingAreaHub(''); setPage(1); };
   const exportCsv = () => {
     const header = ['#', 'Tracking Number', 'Business Name', 'Type', 'Scanned From', 'Assigned Hub', 'Received Time', 'Waiting Duration', 'Minutes Waiting'];
     const lines = [header, ...filtered.map((row, index) => [index + 1, row.trackingNumber, row.business, row.type, row.device, row.assignedHub, row.receivedAt.toLocaleString(), duration(row.minutes), row.minutes])];
     const blob = new Blob(['\ufeff' + lines.map((line) => line.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a'); link.href = url; link.download = `bosta-miss-scan-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
+    const link = document.createElement('a'); link.href = url; link.download = `bosta-${sortingVolume ? 'sorting-volume' : 'miss-scan'}-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
   if (checking) return <section className="miss-panel" role="status">Checking Bosta connection…</section>;
   if (restricted) return <section className="miss-panel" role="alert">Your role does not allow viewing organization-wide live shipments.</section>;
   return <div className="miss-scan">
-    <section className="miss-panel miss-intro"><div><span className="source-kind">Bosta Admin live API</span><h2>Miss Scan inspection</h2><p>Received at the warehouse without a Ready to Dispatch scan. These shipments may be delayed.</p></div>
+    <section className="miss-panel miss-intro"><div><span className="source-kind">Bosta Admin live API</span><h2>{sortingVolume ? 'Sorting Volume by area' : 'Miss Scan inspection'}</h2><p>{sortingVolume ? 'Review Miss Scan workload grouped by area and each assigned hub.' : 'Received at the warehouse without a Ready to Dispatch scan. These shipments may be delayed.'}</p></div>
       {connected && <div className="miss-actions"><button type="button" className="btn sm" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw size={15} /> Refresh</button></div>}
     </section>
     {error && <div className="workspace-notice" role="alert">{error}</div>}
@@ -152,16 +182,26 @@ export const MissScanSection: React.FC<{ organizationSlug: string }> = ({ organi
       })}</div>
       <section className="miss-panel"><div className="miss-filter-heading"><div><Filter size={17} /><strong>Filtering late shipments</strong><span>{filtered.length.toLocaleString()} / {rows.length.toLocaleString()}</span></div><span>{loading ? 'Updating…' : updatedAt ? `Updated ${new Date(updatedAt).toLocaleTimeString()}` : 'Waiting for data'}</span></div>
         <div className="miss-filters"><label className="miss-search"><Search size={16} /><input type="search" placeholder="Search tracking, business or hub" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></label><label className="miss-search"><Search size={16} /><input type="search" placeholder="Search business name" value={businessSearch} onChange={(event) => { setBusinessSearch(event.target.value); setPage(1); }} /></label>
-          <label>Hub <select value={hubId} onChange={(event) => { setHubId(event.target.value); setPage(1); }}>{hubs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label>{sortingVolume ? 'Scanning hub' : 'Hub'} <select value={hubId} onChange={(event) => { setHubId(event.target.value); setPage(1); }}>{hubs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <MultiFilter label="Business" options={businessOptions} value={businesses} onChange={(value) => { setBusinesses(value); setPage(1); }} />
           <label>Since <select value={minimumHours} onChange={(event) => { setMinimumHours(Number(event.target.value)); setPage(1); }}>{[0, 1, 2, 3, 6, 12].map((value) => <option key={value} value={value}>{value ? `Over ${value} hours` : 'All hours'}</option>)}</select></label>
           <label>At least <select value={minimumDays} onChange={(event) => { setMinimumDays(Number(event.target.value)); setPage(1); }}>{[0, 1, 2, 3, 7].map((value) => <option key={value} value={value}>{value ? `Over ${value} days` : 'All days'}</option>)}</select></label>
-          <MultiFilter label="Assigned hub" options={hubOptions} value={assignedHubs} onChange={(value) => { setAssignedHubs(value); setPage(1); }} />
+          {!sortingVolume && <MultiFilter label="Assigned hub" options={hubOptions} value={assignedHubs} onChange={(value) => { setAssignedHubs(value); setPage(1); }} />}
           <MultiFilter label="Type" options={typeOptions} value={types} onChange={(value) => { setTypes(value); setPage(1); }} />
           <button type="button" className="btn sm" onClick={clearFilters}>Clear filters</button>
         </div>
       </section>
-      <section className="miss-panel miss-table-panel"><div className="miss-table-heading"><div><h3>Miss Scan deliveries</h3><p>Received without Ready scan · {filtered.length.toLocaleString()} deliveries</p></div><button type="button" className="btn sm" onClick={exportCsv}><Download size={15} /> Export CSV</button></div><div className="responsive-table-wrap"><table><thead><tr>{['#', 'Tracking number', 'Business', 'Type', 'Scanned from', 'Assigned hub', 'Received time', 'Waiting time', 'Delay level'].map((heading) => <th key={heading}>{heading}</th>)}</tr></thead><tbody>{shown.map((row, index) => <tr key={row.delivery._id}><td>{(page - 1) * PAGE_SIZE + index + 1}</td><td><div className="miss-tracking"><button type="button" onClick={() => setSelected(row)}>{row.trackingNumber}</button><button type="button" title="Copy tracking number" onClick={() => void navigator.clipboard.writeText(row.trackingNumber)}><Copy size={13} /></button><a href={`https://beta-admin.bosta.co/deliveries/${encodeURIComponent(row.trackingNumber)}/details`} target="_blank" rel="noopener noreferrer" title="Open in Bosta Admin"><ExternalLink size={13} /></a></div></td><td>{row.business}</td><td>{row.type}</td><td>{row.device}</td><td>{row.assignedHub}</td><td>{row.receivedAt.toLocaleString()}</td><td>{duration(row.minutes)}</td><td><span className={`miss-delay ${row.minutes >= 180 ? 'high' : row.minutes >= 120 ? 'medium' : row.minutes >= 60 ? 'low' : ''}`}>{row.minutes >= 180 ? 'Over 3 hours' : row.minutes >= 120 ? 'Over 2 hours' : row.minutes >= 60 ? 'Over 1 hour' : 'Under 1 hour'}</span></td></tr>)}{shown.length === 0 && <tr><td colSpan={9}>No Miss Scan deliveries match these filters.</td></tr>}</tbody></table></div>
+      {sortingVolume && <section className="miss-panel miss-sort-area"><div className="miss-table-heading"><div><h3>Work by area and assigned hub</h3><p>{filteredBase.length.toLocaleString()} deliveries across all areas · area counts reflect the active search and filters.</p></div></div>
+        <div className="sort-area-letters" role="group" aria-label="Choose sorting area">
+          {sortingAreas.map((item) => <button key={item.code} className={`sort-area-letter${sortingArea === item.code ? ' is-active' : ''}`} type="button" aria-pressed={sortingArea === item.code} onClick={() => { setSortingArea(item.code); setSortingAreaHub(''); setPage(1); }}>
+            <strong>{item.code === UNKNOWN_AREA ? 'Unmapped' : item.code}</strong><span dir="auto">{item.name}</span><small>{(areaCounts.get(item.code) ?? 0).toLocaleString()} deliveries</small>
+          </button>)}
+        </div>
+        <div className="miss-area-hubs-heading"><div><h4>{sortingArea === UNKNOWN_AREA ? 'Unmapped hubs' : `${sortingArea} · ${selectedSortingArea?.name}`}</h4><p>{(areaCounts.get(sortingArea) ?? 0).toLocaleString()} Miss Scan deliveries · {sortingAreaHubs.length} hubs</p></div><button className="btn sm" type="button" aria-pressed={!sortingAreaHub} onClick={() => { setSortingAreaHub(''); setPage(1); }}>All hubs in this area</button></div>
+        <div className="sort-hub-grid">{sortingAreaHubs.map((name) => <button key={name} className={`sort-hub-card${sortingAreaHub === name ? ' is-active' : ''}`} type="button" aria-pressed={sortingAreaHub === name} onClick={() => { setSortingAreaHub(sortingAreaHub === name ? '' : name); setPage(1); }}><span>{name}</span><strong>{(sortingHubCounts.get(name) ?? 0).toLocaleString()}</strong></button>)}</div>
+        {sortingAreaHubs.length === 0 && <p className="volume-empty" role="status">No assigned hubs match the active filters for this area.</p>}
+      </section>}
+      <section className="miss-panel miss-table-panel"><div className="miss-table-heading"><div><h3>{sortingVolume ? 'Sorting Volume deliveries' : 'Miss Scan deliveries'}</h3><p>{sortingVolume ? `${sortingArea === UNKNOWN_AREA ? 'Unmapped' : `Area ${sortingArea}`} · ${sortingAreaHub || 'All hubs'} · ` : 'Received without Ready scan · '}{filtered.length.toLocaleString()} deliveries</p></div><button type="button" className="btn sm" onClick={exportCsv}><Download size={15} /> Export CSV</button></div><div className="responsive-table-wrap"><table><thead><tr>{['#', 'Tracking number', 'Business', 'Type', 'Scanned from', 'Assigned hub', 'Received time', 'Waiting time', 'Delay level'].map((heading) => <th key={heading}>{heading}</th>)}</tr></thead><tbody>{shown.map((row, index) => <tr key={row.delivery._id}><td>{(page - 1) * PAGE_SIZE + index + 1}</td><td><div className="miss-tracking"><button type="button" onClick={() => setSelected(row)}>{row.trackingNumber}</button><button type="button" title="Copy tracking number" onClick={() => void navigator.clipboard.writeText(row.trackingNumber)}><Copy size={13} /></button><a href={`https://beta-admin.bosta.co/deliveries/${encodeURIComponent(row.trackingNumber)}/details`} target="_blank" rel="noopener noreferrer" title="Open in Bosta Admin"><ExternalLink size={13} /></a></div></td><td>{row.business}</td><td>{row.type}</td><td>{row.device}</td><td>{row.assignedHub}</td><td>{row.receivedAt.toLocaleString()}</td><td>{duration(row.minutes)}</td><td><span className={`miss-delay ${row.minutes >= 180 ? 'high' : row.minutes >= 120 ? 'medium' : row.minutes >= 60 ? 'low' : ''}`}>{row.minutes >= 180 ? 'Over 3 hours' : row.minutes >= 120 ? 'Over 2 hours' : row.minutes >= 60 ? 'Over 1 hour' : 'Under 1 hour'}</span></td></tr>)}{shown.length === 0 && <tr><td colSpan={9}>No Miss Scan deliveries match these filters.</td></tr>}</tbody></table></div>
         {pageCount > 1 && <div className="miss-pagination"><button type="button" className="btn sm" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {pageCount}</span><button type="button" className="btn sm" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)}>Next</button></div>}
       </section>
     </>}

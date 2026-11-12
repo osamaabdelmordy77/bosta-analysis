@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { ShipmentRecord } from '../types';
-import { parseShipmentDateTime, toLocalDateInputValue } from '../utils/receiveDateTime';
+import { parseShipmentDateTime } from '../utils/receiveDateTime';
 import { ShipmentExplorerSection } from './ShipmentExplorerSection';
 import { ReceiveVolumeSection } from './ReceiveVolumeSection';
 
@@ -11,10 +11,10 @@ interface ReceiveSheetsSectionProps {
 }
 
 interface ReceiveFilters {
-  pickedUpFrom: string;
-  pickedUpTo: string;
   receivedFrom: string;
   receivedTo: string;
+  firstReceivingBy: string;
+  business: string;
   type: string;
   packageSize: string;
   pickupZone: string;
@@ -22,10 +22,10 @@ interface ReceiveFilters {
 }
 
 const EMPTY_FILTERS: ReceiveFilters = {
-  pickedUpFrom: '',
-  pickedUpTo: '',
   receivedFrom: '',
   receivedTo: '',
+  firstReceivingBy: '',
+  business: '',
   type: '',
   packageSize: '',
   pickupZone: '',
@@ -40,6 +40,8 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
   const [tab, setTab] = useState<'records' | 'volume'>('records');
   const [filters, setFilters] = useState<ReceiveFilters>(EMPTY_FILTERS);
   const options = useMemo(() => ({
+    receivers: getUniqueValues(shipments, (shipment) => shipment.firstReceivingBy),
+    businesses: getUniqueValues(shipments, (shipment) => shipment.business),
     types: getUniqueValues(shipments, (shipment) => shipment.shipType),
     packageSizes: getUniqueValues(shipments, (shipment) => shipment.packageSize),
     pickupZones: getUniqueValues(shipments, (shipment) => shipment.pickupZone),
@@ -52,17 +54,11 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
 
     return shipments.filter((shipment) => {
       if (filters.type && shipment.shipType !== filters.type) return false;
+      if (filters.firstReceivingBy && shipment.firstReceivingBy !== filters.firstReceivingBy) return false;
+      if (filters.business && shipment.business !== filters.business) return false;
       if (filters.packageSize && shipment.packageSize !== filters.packageSize) return false;
       if (filters.pickupZone && shipment.pickupZone !== filters.pickupZone) return false;
       if (filters.pickupCity && shipment.pickupCity !== filters.pickupCity) return false;
-
-      if (filters.pickedUpFrom || filters.pickedUpTo) {
-        const pickedUp = parseShipmentDateTime(shipment.pickedUpDate);
-        if (!pickedUp) return false;
-        const pickedUpDate = toLocalDateInputValue(pickedUp);
-        if (filters.pickedUpFrom && pickedUpDate < filters.pickedUpFrom) return false;
-        if (filters.pickedUpTo && pickedUpDate > filters.pickedUpTo) return false;
-      }
 
       if (filters.receivedFrom || filters.receivedTo) {
         const received = parseShipmentDateTime(shipment.receivedTime)?.getTime();
@@ -79,6 +75,21 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
   const updateFilter = (key: keyof ReceiveFilters, value: string) => {
     setFilters((previous) => ({ ...previous, [key]: value }));
   };
+  const receivingBreakdown = useMemo(() => {
+    const groups = new Map<string, { receiver: string; business: string; count: number }>();
+    for (const shipment of filteredShipments) {
+      const receiver = shipment.firstReceivingBy?.trim() || 'Not recorded';
+      const business = shipment.business?.trim() || 'Not recorded';
+      const key = `${receiver}\u0000${business}`;
+      const group = groups.get(key) || { receiver, business, count: 0 };
+      group.count++;
+      groups.set(key, group);
+    }
+    return [...groups.values()].sort((left, right) => left.receiver.localeCompare(right.receiver)
+      || right.count - left.count || left.business.localeCompare(right.business));
+  }, [filteredShipments]);
+  const receivingPeople = new Set(filteredShipments.map((shipment) => shipment.firstReceivingBy?.trim()).filter(Boolean)).size;
+  const missingReceivedTimes = filteredShipments.filter((shipment) => !shipment.receivedTime?.trim()).length;
   const renderSelect = (label: string, key: keyof ReceiveFilters, values: string[]) => (
     <label className="page-filter-control" key={key}>
       <span>{label}</span>
@@ -106,7 +117,7 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
           <div>
             <span className="source-kind">Combined filters</span>
             <h2>Receive records</h2>
-            <p>Picked-Up Date and Received Time are source timestamps. Elapsed time is Received Time minus Picked-Up Date.</p>
+            <p>Received Time and First Receiving By come from the imported source rows. Filter by receiver or business to inspect the matching shipments.</p>
           </div>
           <div className="receive-filter-actions">
             <span className="shipment-row-count">{filteredShipments.length.toLocaleString()} of {shipments.length.toLocaleString()} records</span>
@@ -118,14 +129,6 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
 
         <div className="receive-filter-grid">
           <label className="page-filter-control">
-            <span>Picked-Up Date from</span>
-            <input type="date" value={filters.pickedUpFrom} onChange={(event) => updateFilter('pickedUpFrom', event.target.value)} />
-          </label>
-          <label className="page-filter-control">
-            <span>Picked-Up Date to</span>
-            <input type="date" value={filters.pickedUpTo} onChange={(event) => updateFilter('pickedUpTo', event.target.value)} />
-          </label>
-          <label className="page-filter-control">
             <span>Received Time from</span>
             <input type="datetime-local" value={filters.receivedFrom} onChange={(event) => updateFilter('receivedFrom', event.target.value)} />
           </label>
@@ -133,6 +136,8 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
             <span>Received Time to</span>
             <input type="datetime-local" value={filters.receivedTo} onChange={(event) => updateFilter('receivedTo', event.target.value)} />
           </label>
+          {renderSelect('First Receiving By', 'firstReceivingBy', options.receivers)}
+          {renderSelect('Business', 'business', options.businesses)}
           {renderSelect('Type', 'type', options.types)}
           {renderSelect('Package Size', 'packageSize', options.packageSizes)}
           {renderSelect('Pickup Zone', 'pickupZone', options.pickupZones)}
@@ -140,8 +145,24 @@ export const ReceiveSheetsSection: React.FC<ReceiveSheetsSectionProps> = ({ ship
         </div>
       </section>
 
+      <section className="receive-filter-panel receive-receiver-summary" aria-label="Shipments by receiver and business">
+        <div className="receive-filter-heading">
+          <div><span className="source-kind">First Receiving By</span><h2>Received shipments by person and business</h2><p>Choose a name above to filter the shipment records and see its business breakdown.</p></div>
+          <div className="receive-filter-actions"><span className="shipment-row-count">{filteredShipments.length.toLocaleString()} shipments · {receivingPeople.toLocaleString()} named receivers</span></div>
+        </div>
+        {missingReceivedTimes > 0 && <p className="volume-note">{missingReceivedTimes.toLocaleString()} records in this selection have no Received Time saved in their source data.</p>}
+        <div className="dt-wrap"><table className="receive-receiver-table"><thead><tr><th>First Receiving By</th><th>Business</th><th>Shipments</th></tr></thead><tbody>
+          {receivingBreakdown.map(({ receiver, business, count }) => <tr key={`${receiver}\u0000${business}`}>
+            <td>{receiver === 'Not recorded' ? receiver : <button type="button" className="receive-receiver-filter-button" onClick={() => { updateFilter('firstReceivingBy', receiver); setTab('records'); }}>{receiver}</button>}</td>
+            <td>{business === 'Not recorded' ? business : <button type="button" className="receive-receiver-filter-button" onClick={() => { updateFilter('business', business); setTab('records'); }}>{business}</button>}</td>
+            <td><button type="button" className="volume-count" onClick={() => { setFilters((previous) => ({ ...previous, firstReceivingBy: receiver === 'Not recorded' ? '' : receiver, business: business === 'Not recorded' ? '' : business })); setTab('records'); }}>{count.toLocaleString()}</button></td>
+          </tr>)}
+          {!receivingBreakdown.length && <tr><td colSpan={3}>No shipments match these filters.</td></tr>}
+        </tbody></table></div>
+      </section>
+
       <div id="receive-tab-panel" role="tabpanel" aria-labelledby={tab === 'records' ? 'receive-records-tab' : 'receive-volume-tab'}>
-        {tab === 'records' ? <ShipmentExplorerSection shipments={filteredShipments} showReceiveFields /> : <ReceiveVolumeSection shipments={filteredShipments} organizationSlug={organizationSlug} />}
+        {tab === 'records' ? <ShipmentExplorerSection shipments={filteredShipments} showReceiveFields showPickedUpDate={false} /> : <ReceiveVolumeSection shipments={filteredShipments} organizationSlug={organizationSlug} />}
       </div>
     </div>
   );

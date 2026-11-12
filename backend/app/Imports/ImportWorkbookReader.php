@@ -108,10 +108,27 @@ class ImportWorkbookReader
     }
 
     /** @param array<string,mixed> $inspection @return \Generator<int,array{sheet:array<string,mixed>,source_row_number:int,values:list<mixed>}> */
-    public function rows(string $path, array $inspection): \Generator
+    public function rows(string $path, array $inspection, ?int $batchIndex = null, ?int $batchRows = null): \Generator
     {
+        $batchCount = max(1, (int) config('import_ingestion.processing_batch_count', 3));
+        $batchStart = $batchIndex === null || $batchRows === null ? null : ($batchIndex * $batchRows) + 1;
+        $batchEnd = $batchIndex === null || $batchRows === null ? null : (($batchIndex + 1) * $batchRows);
+        $batchLimitMessage = $batchRows === null
+            ? 'The workbook exceeds the supported data row limit.'
+            : 'The workbook exceeds the supported '.number_format($batchRows * $batchCount).' data row limit.';
+        $globalDataRowNumber = 0;
+
         if ($inspection['format'] === 'xls') {
-            yield from $this->spreadsheetRows($path, $inspection['sheets']);
+            yield from $this->spreadsheetRows(
+                $path,
+                $inspection['sheets'],
+                $batchIndex,
+                $batchStart,
+                $batchEnd,
+                $batchCount,
+                $batchLimitMessage,
+                $globalDataRowNumber,
+            );
 
             return;
         }
@@ -130,6 +147,17 @@ class ImportWorkbookReader
                     }
                     $values = array_slice(array_pad($values, count($sheet['headers']), null), 0, count($sheet['headers']));
                     if ($this->hasValues($values)) {
+                        $globalDataRowNumber++;
+                        if ($batchEnd !== null && $globalDataRowNumber > $batchEnd) {
+                            if ($batchIndex >= $batchCount - 1) {
+                                throw new RuntimeException($batchLimitMessage);
+                            }
+
+                            return;
+                        }
+                        if ($batchStart !== null && $globalDataRowNumber < $batchStart) {
+                            continue;
+                        }
                         yield ['sheet' => $sheet, 'source_row_number' => $number, 'values' => $values];
                     }
                 }
@@ -169,6 +197,18 @@ class ImportWorkbookReader
                         $values = array_slice($values, 0, count($metadata['headers']));
                     }
                     if (! $this->hasValues($values)) {
+                        continue;
+                    }
+
+                    $globalDataRowNumber++;
+                    if ($batchEnd !== null && $globalDataRowNumber > $batchEnd) {
+                        if ($batchIndex >= $batchCount - 1) {
+                            throw new RuntimeException($batchLimitMessage);
+                        }
+
+                        return;
+                    }
+                    if ($batchStart !== null && $globalDataRowNumber < $batchStart) {
                         continue;
                     }
 
@@ -512,7 +552,16 @@ class ImportWorkbookReader
     }
 
     /** @param array<string,mixed> $inspection @param list<array<string,mixed>> $sheets @return \Generator<int,array{sheet:array<string,mixed>,source_row_number:int,values:list<mixed>}> */
-    private function spreadsheetRows(string $path, array $sheets): \Generator
+    private function spreadsheetRows(
+        string $path,
+        array $sheets,
+        ?int $batchIndex,
+        ?int $batchStart,
+        ?int $batchEnd,
+        int $batchCount,
+        string $batchLimitMessage,
+        int &$globalDataRowNumber,
+    ): \Generator
     {
         $reader = IOFactory::createReaderForFile($path);
         $reader->setReadDataOnly(false)->setReadEmptyCells(false);
@@ -538,9 +587,11 @@ class ImportWorkbookReader
             $sheetName = (string) $metadata['name'];
             $columnCount = count($metadata['headers']);
             $reader->setLoadSheetsOnly([$sheetName]);
-            for ($firstRow = (int) $metadata['header_row_number'] + 1; $firstRow <= (int) $info['totalRows']; $firstRow += $chunkSize) {
+            $sheetFirstRow = max((int) $metadata['header_row_number'] + 1, 1);
+            $sheetLastRow = (int) $info['totalRows'];
+            for ($firstRow = $sheetFirstRow; $firstRow <= $sheetLastRow; $firstRow += $chunkSize) {
                 $filter->startRow = $firstRow;
-                $filter->endRow = min((int) $info['totalRows'], $firstRow + $chunkSize - 1);
+                $filter->endRow = min($sheetLastRow, $firstRow + $chunkSize - 1);
                 $book = $reader->load($path);
                 $worksheet = $book->getSheetByName($sheetName);
                 if ($worksheet === null) {
@@ -562,6 +613,19 @@ class ImportWorkbookReader
                         $values[] = $value === '' ? null : $value;
                     }
                     if ($this->hasValues($values)) {
+                        $globalDataRowNumber++;
+                        if ($batchEnd !== null && $globalDataRowNumber > $batchEnd) {
+                            $book->disconnectWorksheets();
+                            if ($batchIndex >= $batchCount - 1) {
+                                throw new RuntimeException($batchLimitMessage);
+                            }
+
+                            return;
+                        }
+                        if ($batchStart !== null && $globalDataRowNumber < $batchStart) {
+                            continue;
+                        }
+
                         yield ['sheet' => $metadata, 'source_row_number' => $rowIndex, 'values' => $values];
                     }
                 }

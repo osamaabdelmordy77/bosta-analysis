@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 export async function downloadVolumeGroup(entries: VolumeEntry[], name: string): Promise<void> {
   const rows = entries.map(({ shipment: s, date, weekday, week, window }) => ({
     'Tracking number': s.tracking, 'Received date': date, Weekday: weekday, 'Week starts Saturday': week,
-    'Time group': window, 'Received Time': s.receivedTime ?? '', 'Picked-Up Date': s.pickedUpDate ?? '',
+    'Time group': window, 'Received Time': s.receivedTime ?? '', 'First Receiving By': s.firstReceivingBy ?? '',
     'Report date': s.shipmentDate, Items: s.items, Business: s.business ?? '', Type: s.shipType ?? '',
     'Package type': s.packageType ?? '', 'Package size': s.packageSize ?? '', 'Pickup city': s.pickupCity ?? '',
     'Drop city': s.dropCity ?? '', 'Pickup zone': s.pickupZone ?? '', 'Assigned hub': s.assignedHub ?? '',

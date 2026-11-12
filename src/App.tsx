@@ -84,7 +84,7 @@ import {
 } from 'lucide-react';
 
 type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Users' | 'Roles & Permissions';
-type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
+type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Sorting Volume' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
 type AccessLoadState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
 type PageFilters = Record<WorkspacePage, Record<'Sheets' | 'Live', FilterState>>;
 
@@ -194,7 +194,7 @@ export default function App() {
     Users: 'Live',
     'Roles & Permissions': 'Live',
   });
-  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
+  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Sorting Volume': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
   const [accessFiltersByPage, setAccessFiltersByPage] = useState<Record<'Users' | 'Roles & Permissions', Record<string, string>>>({
     Users: { role: '', status: '' },
     'Roles & Permissions': { group: '', scope: '' },
@@ -233,10 +233,17 @@ export default function App() {
     'Roles & Permissions': '',
   });
   const activeTab = pageTabs[activePage];
-  const filterTab = activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Time Analysis'
+  const filterTab = activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Sorting Volume' || activeTab === 'Time Analysis'
     || activeTab === 'Removed Seals' || activeTab === 'Seal Logs' || activeTab === 'mainfest' || activeTab === 'Wrong Shipments' ? 'Sheets' : activeTab;
+  const activeRoleSlug = activeOrganization?.role?.slug || '';
+  const canManageImports = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager'].includes(activeRoleSlug));
+  const canUploadFiles = Boolean(canManageImports || activeRoleSlug === 'analyst');
+  const canViewImportJobs = canUploadFiles;
+  const canArchiveFiles = Boolean(canManageImports || activeRoleSlug === 'analyst');
+  const canManageAllData = canManageImports;
   const canViewMissScan = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager', 'analyst', 'auditor'].includes(activeOrganization?.role?.slug || ''));
   const availableTabs: WorkspaceTab[] = activePage === 'Receive' && canViewMissScan ? ['Sheets', 'Live', 'Wrong Shipments']
+    : activePage === 'Sort' && canViewMissScan ? ['Sheets', 'Live', 'Sorting Volume']
     : activePage === 'Loading' ? ['Sheets', 'Live', 'CARS', 'Loading Check', 'mainfest']
     : activePage === 'Transfer' && canViewMissScan ? ['Sheets', 'Live', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'] : ['Sheets', 'Live'];
   useEffect(() => {
@@ -244,6 +251,7 @@ export default function App() {
       setPageTabs((previous) => {
         const next = { ...previous };
         if (['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(previous.Transfer)) next.Transfer = 'Sheets';
+        if (previous.Sort === 'Sorting Volume') next.Sort = 'Sheets';
         if (previous.Receive === 'Wrong Shipments') next.Receive = 'Sheets';
         return next;
       });
@@ -390,13 +398,15 @@ export default function App() {
       getImportFiles(organizationSlug),
       getAllShipments(organizationSlug),
       getOrganizationSettings(organizationSlug),
-      getImportJobs(organizationSlug).catch((error: unknown) => {
-        if (error instanceof ApiError && error.status === 403) return null;
-        throw error;
-      }),
+      canViewImportJobs
+        ? getImportJobs(organizationSlug).catch((error: unknown) => {
+            if (error instanceof ApiError && error.status === 403) return null;
+            throw error;
+          })
+        : Promise.resolve(null),
     ]);
     const jobs = jobsResult || [];
-    setImportJobsAccessRestricted(jobsResult === null);
+    setImportJobsAccessRestricted(canViewImportJobs && jobsResult === null);
     setFiles(importData.files);
     setShipments(serverShipments);
     setAllHeaders(importData.headers);
@@ -406,7 +416,7 @@ export default function App() {
     importJobsRef.current = jobs;
     setImportJobs(jobs);
     setLastDataUpdated(Date.now());
-  }, []);
+  }, [canViewImportJobs]);
 
   // Import legacy browser records to MySQL and delete the old database only after count verification.
   useEffect(() => {
@@ -438,7 +448,13 @@ export default function App() {
   }, [activeOrganization, reloadOrganizationData]);
 
   useEffect(() => {
-    if (!activeOrganization) return;
+    if (!activeOrganization?.slug) return;
+    if (!canViewImportJobs) {
+      importJobsRef.current = [];
+      setImportJobs([]);
+      setImportJobsAccessRestricted(false);
+      return;
+    }
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
@@ -474,7 +490,7 @@ export default function App() {
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [activeOrganization, reloadOrganizationData, jobPollVersion]);
+  }, [activeOrganization?.slug, canViewImportJobs, reloadOrganizationData, jobPollVersion]);
 
   const handleLogin = async (email: string, password: string) => {
     setAuthSubmitting(true);
@@ -560,6 +576,7 @@ export default function App() {
     pending: PendingFile[],
     onProgress: (id: string, loaded: number, total: number) => void,
   ) => {
+    if (!canUploadFiles) throw new Error('Your role cannot upload shipment reports.');
     if (!activeOrganization) throw new Error('Select an organization before importing workbooks.');
     for (const p of pending) {
       const started = await uploadWorkbookFile(
@@ -590,7 +607,7 @@ export default function App() {
   };
 
   const handleRetryImport = async (job: ImportJob) => {
-    if (!activeOrganization) return;
+    if (!activeOrganization || !canManageImports) return;
     await retryImportRun(activeOrganization.slug, job.file_id, job.run_id);
     const jobs = await getImportJobs(activeOrganization.slug);
     importJobsRef.current = jobs;
@@ -600,21 +617,21 @@ export default function App() {
 
   // Delete a specific file
   const handleDeleteFile = async (fileId: string) => {
-    if (!activeOrganization || !confirm('Archive this file from the active dashboard? Its MySQL history will be preserved.')) return;
+    if (!activeOrganization || !canArchiveFiles || !confirm('Archive this file from the active dashboard? Its MySQL history will be preserved.')) return;
     await archiveImport(activeOrganization.slug, fileId);
     await reloadOrganizationData(activeOrganization.slug);
   };
 
   // Update a file's assigned date
   const handleUpdateFileDate = async (fileId: string, newDate: string) => {
-    if (!activeOrganization) return;
+    if (!activeOrganization || !canManageImports) return;
     await updateImportDate(activeOrganization.slug, fileId, newDate);
     await reloadOrganizationData(activeOrganization.slug);
   };
 
   // Clear all stored data
   const handleClearAll = async () => {
-    if (!activeOrganization || !confirm('Archive every upload from the active dashboard? Imported MySQL history will remain available for audit.')) {
+    if (!activeOrganization || !canManageAllData || !confirm('Archive every upload from the active dashboard? Imported MySQL history will remain available for audit.')) {
       return;
     }
     await archiveAllImports(activeOrganization.slug);
@@ -838,6 +855,7 @@ export default function App() {
     }));
   };
   const pageSource = (activePage === 'Transfer' && ['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab))
+    || (activePage === 'Sort' && activeTab === 'Sorting Volume')
     || (activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab))
     || (activePage === 'Receive' && activeTab === 'Wrong Shipments') ? 'Bosta Admin live API · shared browser token'
     : activeTab === 'CARS' ? 'Linked Google Sheet · CARS'
@@ -1007,6 +1025,9 @@ export default function App() {
           currentUser={currentUser}
           organizations={organizations}
           activeOrganization={activeOrganization}
+          canUploadFiles={canUploadFiles}
+          canArchiveFiles={canArchiveFiles}
+          canManageAllData={canManageAllData}
           onOrganizationChange={(slug) => {
             const organization = organizations.find((org) => org.slug === slug) || null;
             if (!organization || organization.slug === activeOrganization.slug) return;
@@ -1048,6 +1069,8 @@ export default function App() {
                 ? 'Track Master Seal shipments from Alex Sorting Facility to the Wrong Shipments destination hubs and Cairo Sorting Facility.'
                 : activePage === 'Receive' && activeTab === 'Wrong Shipments'
                 ? 'Review the original Wrong Shipments report for Master Seals sent to Alex Sorting Facility.'
+                : activePage === 'Sort' && activeTab === 'Sorting Volume'
+                ? 'Review live Miss Scan volume grouped by sorting area and assigned hub.'
                 : activePage === 'Transfer' && activeTab === 'Miss Scan'
                 ? 'Monitor Bosta Admin shipments received without a Ready to Dispatch scan.'
                 : activePage === 'Transfer' && activeTab === 'Time Analysis'
@@ -1059,19 +1082,19 @@ export default function App() {
                       : pageDescriptions[activePage]}</p>
               <div className="page-source-meta">
                 <span><strong>Source</strong> {pageSource}</span>
-                {!['Loading Check', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
+                {!['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
               </div>
             </div>
-            {['Loading Check', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage ? (
+            {['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage && canUploadFiles ? (
               <button type="button" className="btn pri page-primary-action" onClick={() => setIsUploadOpen(true)}>
                 <Upload size={16} /><span>{activePage === 'Receive' ? 'Upload reports' : 'Add source report'}</span>
               </button>
-            ) : (
+            ) : !isOperationsPage ? (
               <button type="button" className="btn page-primary-action" onClick={() => setActiveTab('Live')}>
                 {activePage === 'Users' ? <Users size={16} /> : <ShieldCheck size={16} />}
                 <span>{activePage === 'Users' ? 'View memberships' : 'Review catalog'}</span>
               </button>
-            )}
+            ) : null}
           </section>
 
           <div className={`page-tabs${activePage === 'Transfer' ? ' transfer-page-tabs' : ''}`} role="tablist" aria-label={`${activePage} views`}>
@@ -1104,7 +1127,7 @@ export default function App() {
             ))}
           </div>
 
-          {!['Loading Check', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'CARS', 'mainfest', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Receive' && activeTab === 'Sheets') && (
+          {!['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'CARS', 'mainfest', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Receive' && activeTab === 'Sheets') && (
             <PageFilterPanel
               page={activePage}
               tab={activeTab as 'Sheets' | 'Live'}
@@ -1216,6 +1239,8 @@ export default function App() {
         <WrongShipmentsProvider key={`${activeOrganization.slug}:${bostaConnectionVersion}:loading-check`} organizationSlug={activeOrganization.slug} direction="from-alex">
           <LoadingCheckSection organizationSlug={activeOrganization.slug} />
         </WrongShipmentsProvider>
+      ) : activePage === 'Sort' && activeTab === 'Sorting Volume' && canViewMissScan ? (
+        <MissScanSection key={`${activeOrganization.slug}:${bostaConnectionVersion}:sorting-volume`} organizationSlug={activeOrganization.slug} sortingVolume />
       ) : activePage === 'Transfer' && activeTab === 'Miss Scan' && canViewMissScan ? (
         <MissScanSection key={`${activeOrganization.slug}:${bostaConnectionVersion}`} organizationSlug={activeOrganization.slug} />
       ) : activePage === 'Transfer' && ['Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab) && canViewMissScan ? (
@@ -1251,23 +1276,23 @@ export default function App() {
             <code>Shipment_2026-07-01.xlsx</code>). Files are processed by a Laravel queue worker and stored securely
             in this organization&apos;s MySQL database, including the private original workbook and all source rows.
           </p>
-          <button
+          {canUploadFiles && <button
             type="button"
             className="btn pri"
             onClick={() => setIsUploadOpen(true)}
           >
             <Upload className="w-4 h-4" />
             <span>Choose Excel Files to Upload</span>
-          </button>
+          </button>}
         </div>
       ) : isOperationsPage && activeTab === 'Sheets' && ['Sort', 'Transfer', 'Loading'].includes(activePage) && files.length === 0 ? (
         <section className="empty-workspace">
           <div className="empty-icon"><FileSpreadsheet size={22} /></div>
           <h2>No shipment data yet</h2>
           <p>Upload a report to populate {activePage.toLowerCase()} insights for this organization.</p>
-          <button type="button" className="btn pri" onClick={() => setIsUploadOpen(true)}>
+          {canUploadFiles && <button type="button" className="btn pri" onClick={() => setIsUploadOpen(true)}>
             <Upload size={16} /><span>Upload reports</span>
-          </button>
+          </button>}
         </section>
       ) : isOperationsPage && activeTab === 'Sheets' ? (
         <div className="analytics-sections">
@@ -1457,6 +1482,9 @@ export default function App() {
         isOpen={isFileManagerOpen}
         onClose={() => setIsFileManagerOpen(false)}
         files={files}
+        canEditFiles={canManageImports}
+        canArchiveFiles={canArchiveFiles}
+        canClearAll={canManageAllData}
         onDeleteFile={handleDeleteFile}
         onUpdateFileDate={handleUpdateFileDate}
         onClearAll={() => {

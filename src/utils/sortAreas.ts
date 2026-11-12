@@ -32,18 +32,24 @@ for (const alias of ['3rd settlement', '3rd settelment (التجمع الثال�
   hubLookup.set(normalizeAssignedHub(alias), { area: 'N', hub: '3rd settelment' });
 }
 
+export function classifyAssignedHub(value: string | null | undefined): { area: string; hub: string } {
+  const rawHub = value?.trim() || '';
+  const known = hubLookup.get(normalizeAssignedHub(rawHub));
+  return known ?? { area: UNKNOWN_AREA, hub: rawHub || MISSING_HUB };
+}
+
 export function classifySortAreas(shipments: ShipmentRecord[]): AreaEntry[] {
   const unknownNames = new Map<string, string>();
   return shipments.map((shipment) => {
     const rawHub = shipment.hubs['Assigned Hub']?.trim() || shipment.assignedHub?.trim() || '';
     const key = normalizeAssignedHub(rawHub);
-    const known = hubLookup.get(key);
-    if (!known && !unknownNames.has(key)) unknownNames.set(key, rawHub || MISSING_HUB);
+    const classifiedHub = classifyAssignedHub(rawHub);
+    if (classifiedHub.area === UNKNOWN_AREA && !unknownNames.has(key)) unknownNames.set(key, rawHub || MISSING_HUB);
     const received = parseShipmentDateTime(shipment.receivedTime);
     return {
       shipment,
-      area: known?.area ?? UNKNOWN_AREA,
-      hub: known?.hub ?? unknownNames.get(key)!,
+      area: classifiedHub.area,
+      hub: classifiedHub.area === UNKNOWN_AREA ? unknownNames.get(key)! : classifiedHub.hub,
       date: received ? toLocalDateInputValue(received) : '',
       weekday: received ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][received.getDay()] : '',
     };

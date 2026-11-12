@@ -79,23 +79,22 @@ Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group
             Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view');
 
             Route::get('/imports', [ImportController::class, 'index']);
-            Route::get('/imports/jobs', [ImportController::class, 'jobs'])->middleware('permission:imports.manage');
+            Route::get('/imports/jobs', [ImportController::class, 'jobs'])->middleware('permission:imports.upload');
             Route::get('/imports/shipments', [ImportController::class, 'shipments']);
             Route::post('/receive/volume/export', ReceiveVolumeExportController::class)->middleware('throttle:10,1');
             Route::get('/settings', [ImportController::class, 'settings']);
             Route::put('/settings/{key}', [ImportController::class, 'saveSetting'])->whereIn('key', ['hubBasis', 'columnOverrides']);
-            Route::post('/imports', [ImportController::class, 'store'])->middleware('permission:imports.manage');
-            Route::post('/legacy-import-files', [LegacyImportController::class, 'start'])->middleware('permission:imports.manage');
+            Route::post('/imports', [ImportController::class, 'store'])->middleware('permission:imports.upload');
+            Route::post('/legacy-import-files', [LegacyImportController::class, 'start'])->middleware('permission:imports.upload');
             Route::post('/legacy-import-files/{legacyFile}/chunks/{chunk}', [LegacyImportController::class, 'appendChunk'])
-                ->whereNumber('chunk')->middleware('permission:imports.manage');
+                ->whereNumber('chunk')->middleware('permission:imports.upload');
             Route::post('/legacy-import-files/{legacyFile}/complete', [LegacyImportController::class, 'complete'])
-                ->middleware('permission:imports.manage');
+                ->middleware('permission:imports.upload');
             Route::post('/imports/{importFile}/runs/{run}/retry', [ImportController::class, 'retry'])
                 ->middleware('permission:imports.manage');
             Route::patch('/imports/{importFile}/date', [ImportController::class, 'updateDate'])
                 ->middleware('permission:imports.manage');
-            Route::delete('/imports/{importFile}', [ImportController::class, 'archive'])
-                ->middleware('permission:imports.manage');
+            Route::delete('/imports/{importFile}', [ImportController::class, 'archive']);
             Route::delete('/imports', [ImportController::class, 'archiveAll'])->middleware('permission:data.manage');
         });
 });

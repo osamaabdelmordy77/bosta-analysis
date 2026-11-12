@@ -6,11 +6,13 @@ import { formatElapsedMinutes, getElapsedMinutes, parseShipmentDateTime } from '
 interface ShipmentExplorerSectionProps {
   shipments: ShipmentRecord[];
   showReceiveFields?: boolean;
+  showPickedUpDate?: boolean;
 }
 
 export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = ({
   shipments,
   showReceiveFields = false,
+  showPickedUpDate = showReceiveFields,
 }) => {
   const [sortKey, setSortKey] = useState<keyof ShipmentRecord>('shipmentDate');
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
@@ -32,7 +34,7 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
     return [...shipments].sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
-      if (sortKey === 'pickedUpDate' || sortKey === 'receivedTime') {
+      if ((showPickedUpDate && sortKey === 'pickedUpDate') || sortKey === 'receivedTime') {
         const left = parseShipmentDateTime(av as string | null)?.getTime();
         const right = parseShipmentDateTime(bv as string | null)?.getTime();
         if (left == null && right == null) return 0;
@@ -48,7 +50,7 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
       }
       return ((av as number) - (bv as number)) * sortDir;
     });
-  }, [shipments, sortKey, sortDir]);
+  }, [shipments, sortKey, sortDir, showPickedUpDate]);
 
   const pageCount = Math.max(1, Math.ceil(filteredShipments.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -116,13 +118,16 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
               </th>
               {showReceiveFields && (
                 <>
-                  <th aria-sort={sortKey === 'pickedUpDate' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                  {showPickedUpDate && <th aria-sort={sortKey === 'pickedUpDate' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
                     <button type="button" className="table-sort-button" onClick={() => handleSort('pickedUpDate')}>Picked-Up Date {sortKey === 'pickedUpDate' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
-                  </th>
+                  </th>}
                   <th aria-sort={sortKey === 'receivedTime' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
                     <button type="button" className="table-sort-button" onClick={() => handleSort('receivedTime')}>Received Time {sortKey === 'receivedTime' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
                   </th>
-                  <th>Elapsed</th>
+                  <th aria-sort={sortKey === 'firstReceivingBy' ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" className="table-sort-button" onClick={() => handleSort('firstReceivingBy')}>First Receiving By {sortKey === 'firstReceivingBy' && <span className="ar">{sortDir > 0 ? '▲' : '▼'}</span>}</button>
+                  </th>
+                  {showPickedUpDate && <th>Elapsed</th>}
                   <th>Type</th>
                   <th>Package Size</th>
                   <th>Pickup Zone</th>
@@ -148,7 +153,7 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
           <tbody>
             {paginatedRows.length === 0 ? (
               <tr>
-              <td colSpan={showReceiveFields ? 14 : 7} className="shipment-empty-row">
+              <td colSpan={showReceiveFields ? (showPickedUpDate ? 15 : 13) : 7} className="shipment-empty-row">
                   <strong>No shipment rows match these filters</strong>
                   <span>Remove a filter or clear all to return to the report data.</span>
                 </td>
@@ -164,9 +169,10 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
                   <td className="record-date-cell">{r.shipmentDate || 'Not set'}</td>
                   {showReceiveFields && (
                     <>
-                      <td>{r.pickedUpDate || '—'}</td>
+                      {showPickedUpDate && <td>{r.pickedUpDate || '—'}</td>}
                       <td>{r.receivedTime || '—'}</td>
-                      <td>{formatElapsedMinutes(getElapsedMinutes(r.pickedUpDate, r.receivedTime))}</td>
+                      <td>{r.firstReceivingBy || '—'}</td>
+                      {showPickedUpDate && <td>{formatElapsedMinutes(getElapsedMinutes(r.pickedUpDate, r.receivedTime))}</td>}
                       <td>{r.shipType || '—'}</td>
                       <td>{r.packageSize || '—'}</td>
                       <td>{r.pickupZone || '—'}</td>
@@ -220,9 +226,10 @@ export const ShipmentExplorerSection: React.FC<ShipmentExplorerSectionProps> = (
               <div><dt>Package</dt><dd>{[selectedRecord.packageType, selectedRecord.packageSize].filter(Boolean).join(' · ') || 'Not available'}</dd></div>
               <div><dt>Pickup city</dt><dd>{selectedRecord.pickupCity || 'Not available'}</dd></div>
               <div><dt>Pickup zone</dt><dd>{selectedRecord.pickupZone || 'Not available'}</dd></div>
-              <div><dt>Picked-Up Date</dt><dd>{selectedRecord.pickedUpDate || 'Not available'}</dd></div>
+              {showPickedUpDate && <div><dt>Picked-Up Date</dt><dd>{selectedRecord.pickedUpDate || 'Not available'}</dd></div>}
               <div><dt>Received Time</dt><dd>{selectedRecord.receivedTime || 'Not available'}</dd></div>
-              <div><dt>Elapsed</dt><dd>{formatElapsedMinutes(getElapsedMinutes(selectedRecord.pickedUpDate, selectedRecord.receivedTime))}</dd></div>
+              <div><dt>First Receiving By</dt><dd>{selectedRecord.firstReceivingBy || 'Not available'}</dd></div>
+              {showPickedUpDate && <div><dt>Elapsed</dt><dd>{formatElapsedMinutes(getElapsedMinutes(selectedRecord.pickedUpDate, selectedRecord.receivedTime))}</dd></div>}
               <div><dt>Drop-off city</dt><dd>{selectedRecord.dropCity || 'Not available'}</dd></div>
               <div><dt>Assigned center</dt><dd>{selectedRecord.assignedHub || 'Not available'}</dd></div>
               <div><dt>Items</dt><dd>{selectedRecord.items.toLocaleString()}</dd></div>

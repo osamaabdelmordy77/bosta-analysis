@@ -136,7 +136,8 @@ class ImportController extends Controller
                     'records.id', 'records.id as record_id', 'records.shipment_date', 'records.tracking', 'records.items',
                     'records.business', 'records.ship_type', 'records.package_type', 'records.package_size',
                     'records.pickup_city', 'records.drop_city', 'records.pickup_zone', 'records.assigned_hub',
-                    'records.hubs', 'records.raw_date', 'files.id as file_id', 'files.original_name as file_name',
+                    'records.hubs', 'records.raw_date', 'records.received_time', 'records.first_receiving_by',
+                    'files.id as file_id', 'files.original_name as file_name',
                 ])
                 ->orderBy('records.id')
                 ->cursorPaginate($perPage);
@@ -190,8 +191,9 @@ class ImportController extends Controller
                 'parties.pickup_city', 'parties.dropoff_city', 'parties.pickup_zone',
                 'routing.current_hub_name', 'routing.assigned_hub_name', 'routing.auto_assigned_hub_name',
                 'routing.first_hub_name', 'routing.last_dispatch_hub_name', 'routing.loss_liable_hub_name',
+                'parties.first_receiving_by',
                 DB::raw("JSON_UNQUOTE(JSON_EXTRACT(source_rows.source_values, JSON_UNQUOTE(JSON_SEARCH(source_sheets.source_headers, 'one', 'Picked-Up Date')))) as picked_up_date"),
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(source_rows.source_values, JSON_UNQUOTE(JSON_SEARCH(source_sheets.source_headers, 'one', 'Received Time')))) as received_time"),
+                DB::raw("COALESCE(DATE_FORMAT(routing.received_at, '%m-%d-%Y, %H:%i:%s'), NULLIF(JSON_UNQUOTE(JSON_EXTRACT(source_rows.source_values, JSON_UNQUOTE(JSON_SEARCH(source_sheets.source_headers, 'one', 'Received Time')))), '')) as received_time"),
             ])
             ->orderBy('shipment_snapshots.id')
             ->toBase()->cursorPaginate($perPage);
@@ -430,11 +432,16 @@ class ImportController extends Controller
 
     public function jobs(string $organization, AuthorizationService $authorization, Request $request): JsonResponse
     {
-        abort_unless($authorization->hasPermission($request->user(), 'imports.manage'), 403);
+        $canManageImports = $authorization->hasPermission($request->user(), 'imports.manage');
+        abort_unless($canManageImports || $authorization->hasPermission($request->user(), 'imports.upload'), 403);
         $organizationId = $this->context->requireId();
-        $runs = DB::table('import_runs as runs')->join('import_files as files', function ($join): void {
+        $query = DB::table('import_runs as runs')->join('import_files as files', function ($join): void {
             $join->on('files.id', '=', 'runs.import_file_id')->on('files.organization_id', '=', 'runs.organization_id');
-        })->where('runs.organization_id', $organizationId)->orderByDesc('runs.created_at')->limit(30)
+        })->where('runs.organization_id', $organizationId);
+        if (! $canManageImports) {
+            $query->where('runs.uploaded_by', $request->user()->id);
+        }
+        $runs = $query->orderByDesc('runs.created_at')->limit(30)
             ->get(['runs.id', 'runs.import_file_id', 'runs.revision', 'runs.report_date', 'runs.processing_state',
                 'runs.processing_error_code', 'runs.processing_error', 'runs.processed_source_rows', 'runs.total_source_rows',
                 'runs.source_rows_count', 'runs.accepted_rows_count', 'runs.duplicate_rows_count', 'runs.rejected_rows_count',
@@ -520,8 +527,19 @@ class ImportController extends Controller
         return $this->success(['updated' => true, 'report_date' => $validated['report_date']]);
     }
 
-    public function archive(Request $request, string $organization, string $importFile, AuditLogService $audit): JsonResponse
+    public function archive(
+        Request $request,
+        string $organization,
+        string $importFile,
+        AuditLogService $audit,
+        AuthorizationService $authorization,
+    ): JsonResponse
     {
+        abort_unless(
+            $authorization->hasPermission($request->user(), 'imports.manage')
+                || $authorization->hasPermission($request->user(), 'imports.archive'),
+            403,
+        );
         $organizationId = $this->context->requireId();
         $file = DB::table('import_files')->where('organization_id', $organizationId)->where('id', $importFile)
             ->whereNull('archived_at')->first();
@@ -624,6 +642,7 @@ class ImportController extends Controller
             'rawDate' => null,
             'pickedUpDate' => $row->picked_up_date,
             'receivedTime' => $row->received_time,
+            'firstReceivingBy' => $row->first_receiving_by,
         ];
     }
 
@@ -650,6 +669,8 @@ class ImportController extends Controller
             'assignedHub' => $row->assigned_hub,
             'hubs' => $hubs,
             'rawDate' => $row->raw_date,
+            'receivedTime' => $row->received_time,
+            'firstReceivingBy' => $row->first_receiving_by,
         ];
     }
 

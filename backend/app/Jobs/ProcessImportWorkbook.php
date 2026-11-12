@@ -30,6 +30,7 @@ class ProcessImportWorkbook implements ShouldQueue
         public readonly string $organizationId,
         public readonly string $fileId,
         public readonly string $runId,
+        public readonly int $batchIndex = 0,
     ) {
         $this->timeout = max(60, (int) config('import_ingestion.worker_timeout', 3600));
         $this->tries = max(1, (int) config('import_ingestion.worker_tries', 3));
@@ -48,7 +49,20 @@ class ProcessImportWorkbook implements ShouldQueue
 
     public function handle(ImportWorkbookProcessor $processor): void
     {
-        $processor->process($this->organizationId, $this->fileId, $this->runId);
+        $processor->process($this->organizationId, $this->fileId, $this->runId, $this->batchIndex);
+
+        $batchCount = max(1, (int) config('import_ingestion.processing_batch_count', 3));
+        if ($this->batchIndex >= $batchCount - 1) {
+            return;
+        }
+
+        $state = DB::table('import_runs')->where('id', $this->runId)
+            ->where('import_file_id', $this->fileId)
+            ->where('organization_id', $this->organizationId)
+            ->value('processing_state');
+        if ($state !== 'completed') {
+            self::dispatch($this->organizationId, $this->fileId, $this->runId, $this->batchIndex + 1)->onQueue('imports');
+        }
     }
 
     public function failed(?Throwable $exception): void

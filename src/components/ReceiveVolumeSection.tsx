@@ -80,6 +80,6 @@ export function ReceiveVolumeSection({ shipments, organizationSlug }: { shipment
       <button className="btn sm" disabled={busy || !displayedEntries.length} type="button" onClick={() => void runDownload(() => downloadVolumeGroup(displayedEntries, `${selectedWindow}-${inspectionWeekday}`))}><Download size={14} /> Download displayed records</button>
     </div>
     <p className="volume-note">The table and Download displayed records use both selectors above, together with the active Receive and Volume filters.</p>
-    <ShipmentExplorerSection shipments={displayed} showReceiveFields />
+    <ShipmentExplorerSection shipments={displayed} showReceiveFields showPickedUpDate={false} />
   </div>;
 }

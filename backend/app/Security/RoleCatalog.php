@@ -20,7 +20,7 @@ class RoleCatalog
                 'members.view', 'members.manage', 'roles.view', 'roles.assign',
                 'hubs.view_all', 'hubs.manage_access',
                 'hubs.view_assigned', 'hubs.manage_assigned',
-                'shipments.view_all', 'imports.manage', 'analytics.view_all',
+                'shipments.view_all', 'imports.manage', 'imports.upload', 'imports.archive', 'analytics.view_all',
                 'shipments.view_assigned', 'analytics.view_assigned',
                 'analytics.export', 'audit.view', 'audit.export', 'data.manage',
             ],
@@ -29,14 +29,14 @@ class RoleCatalog
             'name' => 'Data Manager',
             'permissions' => [
                 'members.view', 'roles.view', 'hubs.view_all', 'shipments.view_all',
-                'imports.manage', 'analytics.view_all', 'analytics.export', 'data.manage',
+                'imports.manage', 'imports.upload', 'imports.archive', 'analytics.view_all', 'analytics.export', 'data.manage',
             ],
         ],
         'analyst' => [
             'name' => 'Analyst',
             'permissions' => [
                 'members.view', 'roles.view', 'hubs.view_all', 'shipments.view_all',
-                'analytics.view_all', 'analytics.export',
+                'imports.upload', 'imports.archive', 'analytics.view_all', 'analytics.export',
             ],
         ],
         'hub-manager' => [
@@ -76,6 +76,8 @@ class RoleCatalog
         'shipments.view_all' => 'View shipment data for every hub in the organization.',
         'shipments.view_assigned' => 'View shipment data in explicitly assigned hubs.',
         'imports.manage' => 'Manage data imports when import APIs are enabled.',
+        'imports.upload' => 'Upload shipment reports and view their processing status.',
+        'imports.archive' => 'Archive one shipment report from the active dashboard while preserving its history.',
         'analytics.view_all' => 'View organization-wide analytics when analytics APIs are enabled.',
         'analytics.view_assigned' => 'View analytics limited to explicitly assigned hubs.',
         'analytics.export' => 'Export analytics when export APIs are enabled.',

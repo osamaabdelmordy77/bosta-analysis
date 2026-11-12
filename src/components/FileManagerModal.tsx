@@ -7,6 +7,9 @@ interface FileManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   files: UploadedFile[];
+  canEditFiles: boolean;
+  canArchiveFiles: boolean;
+  canClearAll: boolean;
   onDeleteFile: (fileId: string) => Promise<void>;
   onUpdateFileDate: (fileId: string, newDate: string) => Promise<void>;
   onClearAll: () => void;
@@ -16,6 +19,9 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
   isOpen,
   onClose,
   files,
+  canEditFiles,
+  canArchiveFiles,
+  canClearAll,
   onDeleteFile,
   onUpdateFileDate,
   onClearAll,
@@ -28,6 +34,7 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
 
   const totalRecords = files.reduce((sum, f) => sum + f.recordCount, 0);
   const totalDuplicates = files.reduce((sum, f) => sum + f.duplicateCount, 0);
+  const showActions = canEditFiles || canArchiveFiles;
 
   const startEdit = (file: UploadedFile) => {
     setEditingId(file.id);
@@ -101,19 +108,19 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
                   <th className="r">Shipment Records</th>
                   <th className="r">Size</th>
                   <th>Uploaded At</th>
-                  <th className="r">Actions</th>
+                  {showActions && <th className="r">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {files.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-slate-400 p-8">
+                    <td colSpan={showActions ? 6 : 5} className="text-center text-slate-400 p-8">
                       No files currently uploaded. Use &quot;Upload Excel Files&quot; to begin.
                     </td>
                   </tr>
                 ) : (
                   files.map((file) => {
-                    const isEditing = editingId === file.id;
+                    const isEditing = canEditFiles && editingId === file.id;
                     const isDeleting = deletingId === file.id;
 
                     return (
@@ -157,14 +164,14 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
                               <span className="font-semibold text-sky-400 font-mono">
                                 {file.detectedDate}
                               </span>
-                              <button
+                              {canEditFiles && <button
                                 type="button"
                                 className="text-slate-500 hover:text-slate-200 p-0.5"
                                 onClick={() => startEdit(file)}
                                 title="Edit shipment date for all records in this file"
                               >
                                 <Edit2 className="w-3 h-3" />
-                              </button>
+                              </button>}
                             </div>
                           )}
                         </td>
@@ -175,18 +182,18 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
                         <td className="text-slate-400 text-xs">
                           {new Date(file.uploadedAt).toLocaleDateString()} {new Date(file.uploadedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
-                        <td className="r">
-                          <button
+                        {showActions && <td className="r">
+                          {canArchiveFiles && <button
                             type="button"
                             className="btn sm danger"
                             onClick={() => handleDelete(file.id)}
                             disabled={isDeleting}
-                            title="Delete this file and all its records"
+                            title="Archive this file from the active dashboard; its history is preserved"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove</span>
-                          </button>
-                        </td>
+                            <span>Archive</span>
+                          </button>}
+                        </td>}
                       </tr>
                     );
                   })
@@ -197,7 +204,7 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
         </div>
 
         <div className="modal-footer justify-between">
-          <button
+          {canClearAll && <button
             type="button"
             className="btn danger sm"
             onClick={onClearAll}
@@ -205,7 +212,7 @@ export const FileManagerModal: React.FC<FileManagerModalProps> = ({
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear All Stored Data</span>
-          </button>
+          </button>}
 
           <button type="button" className="btn sm" onClick={onClose}>
             Done

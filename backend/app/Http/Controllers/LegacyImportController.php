@@ -84,6 +84,8 @@ class LegacyImportController extends Controller
             'records.*.assignedHub' => ['nullable', 'string', 'max:1000'],
             'records.*.hubs' => ['nullable', 'array', 'max:100'],
             'records.*.rawDate' => ['nullable', 'string', 'max:1000'],
+            'records.*.receivedTime' => ['nullable', 'string', 'max:1000'],
+            'records.*.firstReceivingBy' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $organizationId = $this->context->requireId();
@@ -115,6 +117,8 @@ class LegacyImportController extends Controller
                 'assigned_hub' => $record['assignedHub'] ?? null,
                 'hubs' => json_encode($record['hubs'] ?? [], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
                 'raw_date' => $record['rawDate'] ?? null,
+                'received_time' => $record['receivedTime'] ?? null,
+                'first_receiving_by' => $record['firstReceivingBy'] ?? null,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

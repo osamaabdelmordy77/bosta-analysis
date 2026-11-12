@@ -74,6 +74,16 @@ export const norm = (s: unknown): string =>
 const NULLS = new Set(['', 'nan', 'null', 'undefined', 'n/a', 'na', 'none', '-', '--']);
 const pad2 = (n: number | string) => String(n).padStart(2, '0');
 
+function normalizeReceivedTime(value: unknown, dateSystem: '1900' | '1904'): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value, { date1904: dateSystem === '1904' });
+    if (parsed) {
+      return `${pad2(parsed.m)}-${pad2(parsed.d)}-${parsed.y}, ${pad2(parsed.H)}:${pad2(parsed.M)}:${pad2(parsed.S)}`;
+    }
+  }
+  return cleanValue(value);
+}
+
 export function cleanValue(v: unknown): string | null {
   if (v == null) return null;
   if (v instanceof Date) {
@@ -293,6 +303,8 @@ export function parseExcelBuffer(
     const pci = getColIndex('pickupCity');
     const dci = getColIndex('dropCity');
     const pzi = getColIndex('pickupZone');
+    const receivedTimeIndex = sh.hnorm.indexOf(norm('Received Time'));
+    const firstReceivingByIndex = sh.hnorm.indexOf(norm('First Receiving By'));
 
     const hubColIndices = hubLabels.map((l) => sh.hnorm.indexOf(norm(l)));
 
@@ -372,6 +384,8 @@ export function parseExcelBuffer(
         pickupZone: pzi >= 0 ? cleanValue(row[pzi]) : null,
         assignedHub: assignedHubVal,
         hubs: recordHubs,
+        receivedTime: receivedTimeIndex >= 0 ? normalizeReceivedTime(row[receivedTimeIndex], dateSystem) : null,
+        firstReceivingBy: firstReceivingByIndex >= 0 ? cleanValue(row[firstReceivingByIndex]) : null,
         sourceSheetIndex: sh.index,
         sourceRowNumber,
       };

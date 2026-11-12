@@ -48,6 +48,13 @@
 .sort-area-download-card > .sort-area-letter { width: 100%; flex: 1; }
 .sort-hub-download-card > .sort-hub-card { width: 100%; flex: 1; }
 .sort-card-download { justify-content: center; }
+.miss-sort-area { display: grid; gap: 16px; }
+.miss-area-hubs-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.miss-area-hubs-heading h4 { margin: 0 0 4px; }
+.miss-area-hubs-heading p { margin: 0; color: var(--mut); font-size: 12px; }
+.receive-receiver-summary { margin-top: 16px; }
+.receive-receiver-table { min-width: 560px; }
+.receive-receiver-filter-button { padding: 0; border: 0; background: transparent; color: var(--blue); text-align: start; text-decoration: underline; text-underline-offset: 3px; }
 .receive-tabs button:focus-visible, .volume-count:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 :root {

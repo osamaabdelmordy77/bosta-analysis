@@ -20,6 +20,9 @@ interface HeaderProps {
   currentUser: AuthUser;
   organizations: OrganizationOption[];
   activeOrganization: OrganizationOption;
+  canUploadFiles: boolean;
+  canArchiveFiles: boolean;
+  canManageAllData: boolean;
   onOrganizationChange: (slug: string) => void;
   onLogout: () => void;
   onOpenUpload: () => void;
@@ -44,6 +47,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   organizations,
   activeOrganization,
+  canUploadFiles,
+  canArchiveFiles,
+  canManageAllData,
   onOrganizationChange,
   onLogout,
   onOpenUpload,
@@ -128,17 +134,17 @@ export const Header: React.FC<HeaderProps> = ({
         <button type="button" className="btn sm top-secondary" onClick={onOpenDuplicateInfo} aria-label="Duplicate handling details" title="Duplicate handling details">
           <ShieldCheck size={16} /><span>Data integrity</span>
         </button>
-        <button type="button" className="btn sm top-secondary" onClick={onOpenFileManager} aria-label="Manage uploaded files" title="Manage uploaded files">
+        {canArchiveFiles && <button type="button" className="btn sm top-secondary" onClick={onOpenFileManager} aria-label="Manage uploaded files" title="Manage uploaded files">
           <FolderKanban size={16} /><span>Files {files.length > 0 && `(${files.length})`}</span>
-        </button>
-        {files.length > 0 && (
+        </button>}
+        {canManageAllData && files.length > 0 && (
           <button type="button" className="btn danger sm top-clear" onClick={onClearAll} aria-label="Archive all active files" title="Archive all active files">
             <Trash2 size={15} /><span>Clear</span>
           </button>
         )}
-        <button type="button" className="btn pri sm top-upload" onClick={onOpenUpload} aria-label="Upload files">
+        {canUploadFiles && <button type="button" className="btn pri sm top-upload" onClick={onOpenUpload} aria-label="Upload files">
           <Upload size={16} /><span>Upload files</span>
-        </button>
+        </button>}
       </div>
       <div className="top-account" title={currentUser.email}>
         <span className="account-avatar">{currentUser.name.slice(0, 1).toUpperCase()}</span>
