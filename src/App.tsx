@@ -53,6 +53,7 @@ import { CarsSheetSection } from './components/CarsSheetSection';
 import { WrongShipmentsProvider } from './contexts/WrongShipmentsContext';
 import { WrongShipmentsPage } from './pages/WrongShipmentsPage';
 import { WrongShipmentsPage as LoadingManifestWrongShipmentsPage } from './pages/LoadingManifestWrongShipmentsPage';
+import { MailsPage } from './pages/MailsPage';
 import { MissScanSection } from './components/MissScanSection';
 import { TransferHistorySection } from './components/TransferHistorySection';
 import { LoadingCheckSection } from './components/LoadingCheckSection';
@@ -73,6 +74,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Loader2,
+  Mail,
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
@@ -83,8 +85,8 @@ import {
   X,
 } from 'lucide-react';
 
-type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Users' | 'Roles & Permissions';
-type WorkspaceTab = 'Sheets' | 'Live' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Sorting Volume' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
+type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Communication' | 'Users' | 'Roles & Permissions';
+type WorkspaceTab = 'Sheets' | 'Live' | 'Mails' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Sorting Volume' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
 type AccessLoadState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
 type PageFilters = Record<WorkspacePage, Record<'Sheets' | 'Live', FilterState>>;
 
@@ -129,6 +131,7 @@ function createPageFilters(): PageFilters {
     Sort: { Sheets: createDefaultFilters(), Live: createDefaultFilters() },
     Transfer: { Sheets: createDefaultFilters(), Live: createDefaultFilters() },
     Loading: { Sheets: createDefaultFilters(), Live: createDefaultFilters() },
+    Communication: { Sheets: createDefaultFilters(), Live: createDefaultFilters() },
     Users: { Sheets: createDefaultFilters(), Live: createDefaultFilters() },
     'Roles & Permissions': { Sheets: createDefaultFilters(), Live: createDefaultFilters() },
   };
@@ -191,10 +194,11 @@ export default function App() {
     Sort: 'Sheets',
     Transfer: 'Sheets',
     Loading: 'Sheets',
+    Communication: 'Mails',
     Users: 'Live',
     'Roles & Permissions': 'Live',
   });
-  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Sorting Volume': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
+  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, Mails: null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Sorting Volume': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
   const [accessFiltersByPage, setAccessFiltersByPage] = useState<Record<'Users' | 'Roles & Permissions', Record<string, string>>>({
     Users: { role: '', status: '' },
     'Roles & Permissions': { group: '', scope: '' },
@@ -229,11 +233,12 @@ export default function App() {
     Sort: '',
     Transfer: '',
     Loading: '',
+    Communication: '',
     Users: '',
     'Roles & Permissions': '',
   });
   const activeTab = pageTabs[activePage];
-  const filterTab = activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Sorting Volume' || activeTab === 'Time Analysis'
+  const filterTab = activeTab === 'Mails' || activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Sorting Volume' || activeTab === 'Time Analysis'
     || activeTab === 'Removed Seals' || activeTab === 'Seal Logs' || activeTab === 'mainfest' || activeTab === 'Wrong Shipments' ? 'Sheets' : activeTab;
   const activeRoleSlug = activeOrganization?.role?.slug || '';
   const canManageImports = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager'].includes(activeRoleSlug));
@@ -242,7 +247,8 @@ export default function App() {
   const canArchiveFiles = Boolean(canManageImports || activeRoleSlug === 'analyst');
   const canManageAllData = canManageImports;
   const canViewMissScan = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager', 'analyst', 'auditor'].includes(activeOrganization?.role?.slug || ''));
-  const availableTabs: WorkspaceTab[] = activePage === 'Receive' && canViewMissScan ? ['Sheets', 'Live', 'Wrong Shipments']
+  const availableTabs: WorkspaceTab[] = activePage === 'Communication' ? ['Mails']
+    : activePage === 'Receive' && canViewMissScan ? ['Sheets', 'Live', 'Wrong Shipments']
     : activePage === 'Sort' && canViewMissScan ? ['Sheets', 'Live', 'Sorting Volume']
     : activePage === 'Loading' ? ['Sheets', 'Live', 'CARS', 'Loading Check', 'mainfest']
     : activePage === 'Transfer' && canViewMissScan ? ['Sheets', 'Live', 'Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'] : ['Sheets', 'Live'];
@@ -326,7 +332,7 @@ export default function App() {
 
   useEffect(() => {
     setFiltersByPage(createPageFilters());
-    setSearchByPage({ Dashboard: '', Receive: '', Sort: '', Transfer: '', Loading: '', Users: '', 'Roles & Permissions': '' });
+    setSearchByPage({ Dashboard: '', Receive: '', Sort: '', Transfer: '', Loading: '', Communication: '', Users: '', 'Roles & Permissions': '' });
     setAccessFiltersByPage({
       Users: { role: '', status: '' },
       'Roles & Permissions': { group: '', scope: '' },
@@ -541,6 +547,7 @@ export default function App() {
       Sort: '',
       Transfer: '',
       Loading: '',
+      Communication: '',
       Users: '',
       'Roles & Permissions': '',
     });
@@ -799,6 +806,7 @@ export default function App() {
     { label: 'Sort', icon: Activity },
     { label: 'Transfer', icon: ArrowLeftRight },
     { label: 'Loading', icon: Truck },
+    { label: 'Communication', icon: Mail },
     { label: 'Users', icon: Users },
     { label: 'Roles & Permissions', icon: KeyRound },
   ] as const;
@@ -809,6 +817,7 @@ export default function App() {
     Sort: 'Explore hub and business distribution from imported reports.',
     Transfer: 'Review shipment volume and geographic coverage in report data.',
     Loading: 'Inspect imported shipment records and report configuration.',
+    Communication: 'Prepare shipment mail files and validate seals by hub.',
     Users: 'Review active organization memberships available to your account.',
     'Roles & Permissions': 'Review the fixed role and permission catalog for this organization.',
   };
@@ -854,7 +863,8 @@ export default function App() {
       [activePage]: { ...previous[activePage], [key]: value },
     }));
   };
-  const pageSource = (activePage === 'Transfer' && ['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab))
+  const pageSource = activePage === 'Communication' ? 'Local CSV or Excel workbook · processed in this browser'
+    : (activePage === 'Transfer' && ['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab))
     || (activePage === 'Sort' && activeTab === 'Sorting Volume')
     || (activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab))
     || (activePage === 'Receive' && activeTab === 'Wrong Shipments') ? 'Bosta Admin live API · shared browser token'
@@ -1082,14 +1092,14 @@ export default function App() {
                       : pageDescriptions[activePage]}</p>
               <div className="page-source-meta">
                 <span><strong>Source</strong> {pageSource}</span>
-                {!['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
+                {!['Mails', 'Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
               </div>
             </div>
             {['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage && canUploadFiles ? (
               <button type="button" className="btn pri page-primary-action" onClick={() => setIsUploadOpen(true)}>
                 <Upload size={16} /><span>{activePage === 'Receive' ? 'Upload reports' : 'Add source report'}</span>
               </button>
-            ) : !isOperationsPage ? (
+            ) : activePage === 'Users' || activePage === 'Roles & Permissions' ? (
               <button type="button" className="btn page-primary-action" onClick={() => setActiveTab('Live')}>
                 {activePage === 'Users' ? <Users size={16} /> : <ShieldCheck size={16} />}
                 <span>{activePage === 'Users' ? 'View memberships' : 'Review catalog'}</span>
@@ -1127,7 +1137,7 @@ export default function App() {
             ))}
           </div>
 
-          {!['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'CARS', 'mainfest', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Receive' && activeTab === 'Sheets') && (
+          {activePage !== 'Communication' && !['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'CARS', 'mainfest', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Receive' && activeTab === 'Sheets') && (
             <PageFilterPanel
               page={activePage}
               tab={activeTab as 'Sheets' | 'Live'}
@@ -1215,7 +1225,9 @@ export default function App() {
         </div>
       )}
 
-      {loadError && !(activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab)) && !(activePage === 'Receive' && activeTab === 'Wrong Shipments') ? (
+      {activePage === 'Communication' && activeTab === 'Mails' ? (
+        <MailsPage />
+      ) : loadError && !(activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab)) && !(activePage === 'Receive' && activeTab === 'Wrong Shipments') ? (
         <section className="source-empty-state">
           <div className="empty-icon"><AlertTriangle size={21} /></div>
           <span className="source-kind">Organization data unavailable</span>

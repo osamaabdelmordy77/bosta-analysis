@@ -6,6 +6,7 @@ The Laravel API lives here. The React/Vite application remains at the repository
 
 - PHP 8.2 or later with `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `xml`, `xmlreader`, `zip`, and `curl` enabled. `zip` is required for XLSX; PhpSpreadsheet reads legacy XLS files in bounded row chunks.
 - Set PHP `upload_max_filesize=40M` and `post_max_size=48M` in the CLI `php.ini` used by `php artisan serve`. The import endpoint accepts files up to 40 MiB, and multipart requests need extra room beyond the file size. Restart the API after changing `php.ini`.
+- Configure `curl.cainfo` and `openssl.cafile` in that `php.ini` to a current CA bundle (for example, the [curl CA extract](https://curl.se/docs/caextract.html)). PHP needs the bundle to verify the Bosta API certificate. Restart the API after changing these settings.
 - Composer 2.
 - MariaDB 10.4 or later / MySQL with InnoDB and a dedicated local application account.
 
