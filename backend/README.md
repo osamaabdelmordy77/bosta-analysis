@@ -5,6 +5,7 @@ The Laravel API lives here. The React/Vite application remains at the repository
 ## Requirements
 
 - PHP 8.2 or later with `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `xml`, `xmlreader`, `zip`, and `curl` enabled. `zip` is required for XLSX; PhpSpreadsheet reads legacy XLS files in bounded row chunks.
+- Set PHP `upload_max_filesize=40M` and `post_max_size=48M` in the CLI `php.ini` used by `php artisan serve`. The import endpoint accepts files up to 40 MiB, and multipart requests need extra room beyond the file size. Restart the API after changing `php.ini`.
 - Composer 2.
 - MariaDB 10.4 or later / MySQL with InnoDB and a dedicated local application account.
 
@@ -19,7 +20,9 @@ The Laravel API lives here. The React/Vite application remains at the repository
 
 Use a private database account and a strong local password. Keep `.env`, MySQL data files, and uploaded source workbooks out of Git. Store uploaded workbooks on a private filesystem disk; never serve their storage paths directly.
 
-To create a local workspace administrator, set `LOCAL_WORKSPACE_SEED_ENABLED=true` and provide the organization name/slug, administrator name/email/password, and role slug (`organization-admin`, `data-manager`, `analyst`, `hub-manager`, `viewer`, or `auditor`) in the ignored `.env`. Then run `php artisan db:seed`. The seeder is restricted to `APP_ENV=local`, synchronizes the organization role catalog, creates an active organization membership, and records the membership in the audit log. Seeding the same email again updates its local password from `.env`; keep this password out of tracked files and do not use a local seed password outside development.
+To create a local workspace administrator, set `LOCAL_WORKSPACE_SEED_ENABLED=true` and provide the organization name/slug, administrator name/email/password, and role slug (`organization-admin`, `data-manager`, `analyst`, `hub-manager`, `viewer`, or `auditor`) in the ignored `.env`. Then run `php artisan db:seed`. The seeder is restricted to `APP_ENV=local`, synchronizes the organization role catalog, creates an active organization membership, and records the membership in the audit log. Seeding the same email again updates its local password from `.env`; keep the environment-provided password out of tracked files.
+
+In local development, `db:seed` also creates or updates `osama@gmail.com` as an organization administrator using the fixed password in `LocalOsamaUserSeeder.php`. Re-running the seeder restores this login.
 
 ## Import worker
 

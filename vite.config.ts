@@ -1,30 +1,35 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
+import path from 'node:path';
+import {defineConfig, loadEnv} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const port = Number(env.VITE_PORT || 3001);
+  const backendUrl = env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
   return {
     plugins: [react(), tailwindcss()],
+    optimizeDeps: {noDiscovery: true},
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {
-      port: 3001,
+      port,
       strictPort: true,
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:8000',
+          target: backendUrl,
           changeOrigin: true,
         },
         '/sanctum': {
-          target: 'http://127.0.0.1:8000',
+          target: backendUrl,
           changeOrigin: true,
         },
         '/up': {
-          target: 'http://127.0.0.1:8000',
+          target: backendUrl,
           changeOrigin: true,
         },
       },
