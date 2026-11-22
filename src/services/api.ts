@@ -148,6 +148,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const organizationPath = (slug: string) => `/api/organizations/${encodeURIComponent(slug)}`;
 
+export interface SmartStickerSummary {
+  total_shipments: number;
+  with_smart_sticker: number;
+  source_has_barcode_reference: boolean;
+}
+
+export function getSmartStickerSummary(slug: string): Promise<SmartStickerSummary> {
+  return request<SmartStickerSummary>(`${organizationPath(slug)}/communication/smart-stickers`);
+}
+
 export interface CarsSheetSnapshot {
   rows: string[][];
   source_url: string;

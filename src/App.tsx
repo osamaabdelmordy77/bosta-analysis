@@ -54,6 +54,7 @@ import { WrongShipmentsProvider } from './contexts/WrongShipmentsContext';
 import { WrongShipmentsPage } from './pages/WrongShipmentsPage';
 import { WrongShipmentsPage as LoadingManifestWrongShipmentsPage } from './pages/LoadingManifestWrongShipmentsPage';
 import { MailsPage } from './pages/MailsPage';
+import { SmartStickerPage } from './pages/SmartStickerPage';
 import { MissScanSection } from './components/MissScanSection';
 import { TransferHistorySection } from './components/TransferHistorySection';
 import { LoadingCheckSection } from './components/LoadingCheckSection';
@@ -86,7 +87,7 @@ import {
 } from 'lucide-react';
 
 type WorkspacePage = 'Dashboard' | 'Receive' | 'Sort' | 'Transfer' | 'Loading' | 'Communication' | 'Users' | 'Roles & Permissions';
-type WorkspaceTab = 'Sheets' | 'Live' | 'Mails' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Sorting Volume' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
+type WorkspaceTab = 'Sheets' | 'Live' | 'Mails' | 'Smart Sticker No.' | 'CARS' | 'Loading Check' | 'Miss Scan' | 'Sorting Volume' | 'Time Analysis' | 'Removed Seals' | 'Seal Logs' | 'mainfest' | 'Wrong Shipments';
 type AccessLoadState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
 type PageFilters = Record<WorkspacePage, Record<'Sheets' | 'Live', FilterState>>;
 
@@ -198,7 +199,7 @@ export default function App() {
     Users: 'Live',
     'Roles & Permissions': 'Live',
   });
-  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, Mails: null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Sorting Volume': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
+  const pageTabRefs = useRef<Record<WorkspaceTab, HTMLButtonElement | null>>({ Sheets: null, Live: null, Mails: null, 'Smart Sticker No.': null, CARS: null, 'Loading Check': null, 'Miss Scan': null, 'Sorting Volume': null, 'Time Analysis': null, 'Removed Seals': null, 'Seal Logs': null, mainfest: null, 'Wrong Shipments': null });
   const [accessFiltersByPage, setAccessFiltersByPage] = useState<Record<'Users' | 'Roles & Permissions', Record<string, string>>>({
     Users: { role: '', status: '' },
     'Roles & Permissions': { group: '', scope: '' },
@@ -238,7 +239,7 @@ export default function App() {
     'Roles & Permissions': '',
   });
   const activeTab = pageTabs[activePage];
-  const filterTab = activeTab === 'Mails' || activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Sorting Volume' || activeTab === 'Time Analysis'
+  const filterTab = activeTab === 'Mails' || activeTab === 'Smart Sticker No.' || activeTab === 'CARS' || activeTab === 'Loading Check' || activeTab === 'Miss Scan' || activeTab === 'Sorting Volume' || activeTab === 'Time Analysis'
     || activeTab === 'Removed Seals' || activeTab === 'Seal Logs' || activeTab === 'mainfest' || activeTab === 'Wrong Shipments' ? 'Sheets' : activeTab;
   const activeRoleSlug = activeOrganization?.role?.slug || '';
   const canManageImports = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager'].includes(activeRoleSlug));
@@ -247,7 +248,7 @@ export default function App() {
   const canArchiveFiles = Boolean(canManageImports || activeRoleSlug === 'analyst');
   const canManageAllData = canManageImports;
   const canViewMissScan = Boolean(currentUser?.is_system_administrator || ['organization-admin', 'data-manager', 'analyst', 'auditor'].includes(activeOrganization?.role?.slug || ''));
-  const availableTabs: WorkspaceTab[] = activePage === 'Communication' ? ['Mails']
+  const availableTabs: WorkspaceTab[] = activePage === 'Communication' ? ['Mails', 'Smart Sticker No.']
     : activePage === 'Receive' && canViewMissScan ? ['Sheets', 'Live', 'Wrong Shipments']
     : activePage === 'Sort' && canViewMissScan ? ['Sheets', 'Live', 'Sorting Volume']
     : activePage === 'Loading' ? ['Sheets', 'Live', 'CARS', 'Loading Check', 'mainfest']
@@ -863,7 +864,7 @@ export default function App() {
       [activePage]: { ...previous[activePage], [key]: value },
     }));
   };
-  const pageSource = activePage === 'Communication' ? 'Local CSV or Excel workbook · processed in this browser'
+  const pageSource = activePage === 'Communication' ? activeTab === 'Mails' ? 'Local CSV or Excel workbook · processed in this browser' : 'Published organization shipments · database'
     : (activePage === 'Transfer' && ['Miss Scan', 'Time Analysis', 'Removed Seals', 'Seal Logs'].includes(activeTab))
     || (activePage === 'Sort' && activeTab === 'Sorting Volume')
     || (activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab))
@@ -1075,6 +1076,8 @@ export default function App() {
               <h1 ref={pageHeadingRef} tabIndex={-1}>{activePage}</h1>
               <p className="page-description">{activePage === 'Loading' && activeTab === 'Loading Check'
                 ? 'Validate seal numbers against live Bosta data and record the assigned hub in the local dispatch sheet.'
+                : activePage === 'Communication' && activeTab === 'Smart Sticker No.'
+                ? 'Count unique shipments with Smart Sticker No. from the Barcode Reference column in active, published reports.'
                 : activePage === 'Loading' && activeTab === 'mainfest'
                 ? 'Track Master Seal shipments from Alex Sorting Facility to the Wrong Shipments destination hubs and Cairo Sorting Facility.'
                 : activePage === 'Receive' && activeTab === 'Wrong Shipments'
@@ -1092,7 +1095,7 @@ export default function App() {
                       : pageDescriptions[activePage]}</p>
               <div className="page-source-meta">
                 <span><strong>Source</strong> {pageSource}</span>
-                {!['Mails', 'Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
+                {!['Mails', 'Smart Sticker No.', 'Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) && !(activePage === 'Loading' && activeTab === 'mainfest') && <span><strong>Last updated</strong> {formatUpdatedAt(pageUpdatedAt)}</span>}
               </div>
             </div>
             {['Loading Check', 'Miss Scan', 'Sorting Volume', 'Time Analysis', 'Removed Seals', 'Seal Logs', 'Wrong Shipments'].includes(activeTab) || activePage === 'Loading' && (activeTab === 'CARS' || activeTab === 'mainfest') ? null : isOperationsPage && canUploadFiles ? (
@@ -1227,6 +1230,8 @@ export default function App() {
 
       {activePage === 'Communication' && activeTab === 'Mails' ? (
         <MailsPage />
+      ) : activePage === 'Communication' && activeTab === 'Smart Sticker No.' ? (
+        <SmartStickerPage key={activeOrganization.slug} organizationSlug={activeOrganization.slug} />
       ) : loadError && !(activePage === 'Loading' && ['Loading Check', 'mainfest'].includes(activeTab)) && !(activePage === 'Receive' && activeTab === 'Wrong Shipments') ? (
         <section className="source-empty-state">
           <div className="empty-icon"><AlertTriangle size={21} /></div>

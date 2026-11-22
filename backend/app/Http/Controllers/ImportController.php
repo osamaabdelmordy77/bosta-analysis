@@ -206,6 +206,61 @@ class ImportController extends Controller
         ]);
     }
 
+    public function smartStickerSummary(Request $request, string $organization, HubAccessService $hubAccess, AuthorizationService $authorization): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless(
+            $authorization->hasPermission($user, 'shipments.view_all')
+                || $authorization->hasPermission($user, 'shipments.view_assigned'),
+            403,
+        );
+
+        $summary = $hubAccess->scopeShipmentSnapshots(ShipmentSnapshot::query(), $user)
+            ->join('import_runs as runs', function ($join): void {
+                $join->on('runs.id', '=', 'shipment_snapshots.import_run_id')
+                    ->on('runs.organization_id', '=', 'shipment_snapshots.organization_id')
+                    ->where('runs.status', '=', 'published')
+                    ->whereNotNull('runs.published_at');
+            })
+            ->join('import_files as files', function ($join): void {
+                $join->on('files.id', '=', 'runs.import_file_id')
+                    ->on('files.organization_id', '=', 'runs.organization_id')
+                    ->on('files.active_run_id', '=', 'runs.id')
+                    ->whereNull('files.archived_at');
+            })
+            ->leftJoin('shipment_snapshot_routing as routing', function ($join): void {
+                $join->on('routing.shipment_snapshot_id', '=', 'shipment_snapshots.id')
+                    ->on('routing.organization_id', '=', 'shipment_snapshots.organization_id');
+            })
+            ->selectRaw('COUNT(DISTINCT shipment_snapshots.shipment_id) as total_shipments')
+            ->selectRaw("COUNT(DISTINCT CASE WHEN routing.barcode_reference IS NOT NULL AND TRIM(routing.barcode_reference) <> '' THEN shipment_snapshots.shipment_id END) as with_smart_sticker")
+            ->first();
+
+        $hasBarcodeReferenceColumn = DB::table('import_sheets as sheets')
+            ->join('import_runs as runs', function ($join): void {
+                $join->on('runs.id', '=', 'sheets.import_run_id')
+                    ->on('runs.organization_id', '=', 'sheets.organization_id')
+                    ->where('runs.status', '=', 'published')
+                    ->whereNotNull('runs.published_at');
+            })
+            ->join('import_files as files', function ($join): void {
+                $join->on('files.id', '=', 'runs.import_file_id')
+                    ->on('files.organization_id', '=', 'runs.organization_id')
+                    ->on('files.active_run_id', '=', 'runs.id')
+                    ->whereNull('files.archived_at');
+            })
+            ->where('sheets.organization_id', $this->context->requireId())
+            ->whereJsonContains('sheets.source_headers', 'Barcode Reference')
+            ->exists();
+
+        return $this->success([
+            'total_shipments' => (int) ($summary->total_shipments ?? 0),
+            'with_smart_sticker' => (int) ($summary->with_smart_sticker ?? 0),
+            'with_barcode_reference' => (int) ($summary->with_smart_sticker ?? 0),
+            'source_has_barcode_reference' => $hasBarcodeReferenceColumn,
+        ]);
+    }
+
     public function store(
         Request $request,
         string $organization,

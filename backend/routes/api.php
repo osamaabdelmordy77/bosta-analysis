@@ -81,6 +81,8 @@ Route::middleware(['import.benchmark', 'session.expiry', 'auth:sanctum'])->group
             Route::get('/imports', [ImportController::class, 'index']);
             Route::get('/imports/jobs', [ImportController::class, 'jobs'])->middleware('permission:imports.upload');
             Route::get('/imports/shipments', [ImportController::class, 'shipments']);
+            Route::get('/communication/smart-stickers', [ImportController::class, 'smartStickerSummary']);
+            Route::get('/communication/barcode-reference', [ImportController::class, 'smartStickerSummary']);
             Route::post('/receive/volume/export', ReceiveVolumeExportController::class)->middleware('throttle:10,1');
             Route::get('/settings', [ImportController::class, 'settings']);
             Route::put('/settings/{key}', [ImportController::class, 'saveSetting'])->whereIn('key', ['hubBasis', 'columnOverrides']);

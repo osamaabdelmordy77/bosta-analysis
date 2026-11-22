@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BostaMissScanController extends Controller
 {
@@ -322,6 +323,9 @@ class BostaMissScanController extends Controller
     {
         try {
             $client = Http::withToken($token)->acceptJson()->timeout(35);
+            if ($method === 'get') {
+                $client = $client->retry(2, 300, static fn ($exception) => $exception instanceof ConnectionException, throw: false);
+            }
             $isMasterSealRequest = str_starts_with($path, '/seals/master');
             if ($isMasterSealRequest) {
                 $client = $client->withHeaders(['Cache-Control' => 'no-cache, no-store', 'Pragma' => 'no-cache']);
@@ -332,7 +336,11 @@ class BostaMissScanController extends Controller
             if ($response->status() === 304 && $isMasterSealRequest) {
                 $response = $client->get(self::API.$path, [...$payload, '_refresh' => (string) now()->valueOf()]);
             }
-        } catch (ConnectionException) {
+        } catch (ConnectionException $exception) {
+            Log::warning('Bosta API connection failed', [
+                'path' => $path,
+                'error' => str_replace($token, '[redacted]', $exception->getMessage()),
+            ]);
             return response()->json(['message' => 'Could not reach Bosta API.'], 502);
         }
 
